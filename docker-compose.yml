@@ -1,0 +1,16 @@
+# Local Postgres, only for trying the schema out before it touches the real
+# database. Day-to-day the app points at Cloud SQL like every other environment.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: measure
+      POSTGRES_PASSWORD: measure
+      POSTGRES_DB: measure_pressure
+    ports: ['55432:5432']
+    volumes: ['./.pgdata:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U measure -d measure_pressure']
+      interval: 5s
+      timeout: 3s
+      retries: 10

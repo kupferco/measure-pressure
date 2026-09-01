@@ -1,0 +1,28 @@
+{
+  "name": "measure-pressure",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/app"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@mp/api",
+    "dev:app": "npm run dev --workspace=@mp/app",
+    "dev:web": "npm run web --workspace=@mp/app",
+    "build:shared": "npm run build --workspace=@mp/shared",
+    "build:api": "npm run build --workspace=@mp/api",
+    "build:web": "npm run build:web --workspace=@mp/app",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:apply": "sh -c 'set -a; [ -f .env ] && . ./.env; set +a; atlas schema apply --env app'",
+    "db:plan": "sh -c 'set -a; [ -f .env ] && . ./.env; set +a; atlas schema apply --env app --dry-run'",
+    "db:inspect": "sh -c 'set -a; [ -f .env ] && . ./.env; set +a; atlas schema inspect --env app --format \"{{ sql . }}\"'"
+  }
+}
