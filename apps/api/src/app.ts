@@ -34,6 +34,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     origin: (origin, callback) => {
       // No Origin header: a native app or a server-side call, both fine.
       if (!origin) return callback(null, true);
+      // In local development the origin is whatever address the Expo dev server
+      // happens to be on - localhost on this machine, a LAN IP from a phone. That
+      // cannot be listed ahead of time, and nothing sensitive is reachable here.
+      if (config.APP_ENV === 'local') return callback(null, true);
       callback(null, config.allowedOrigins.includes(origin));
     },
     credentials: true,

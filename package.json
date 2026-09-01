@@ -11,9 +11,9 @@
     "apps/app"
   ],
   "scripts": {
-    "dev:api": "npm run dev --workspace=@mp/api",
-    "dev:app": "npm run dev --workspace=@mp/app",
-    "dev:web": "npm run web --workspace=@mp/app",
+    "dev:api": "npm run build:shared && npm run dev --workspace=@mp/api",
+    "dev:app": "npm run build:shared && npm run dev --workspace=@mp/app",
+    "dev:web": "npm run build:shared && npm run web --workspace=@mp/app",
     "build:shared": "npm run build --workspace=@mp/shared",
     "build:api": "npm run build --workspace=@mp/api",
     "build:web": "npm run build:web --workspace=@mp/app",
