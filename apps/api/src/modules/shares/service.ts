@@ -93,12 +93,12 @@ export async function inviteDoctor(patient: User, input: CreateShareInput): Prom
       text: [
         `${who} has invited you to see their blood pressure history in Measure Pressure.`,
         input.note ? `\nTheir note: ${input.note}` : '',
-        `\nSign in to accept: ${config.WEB_ORIGIN}`,
+        `\nSign in to accept: ${config.WEB_ORIGIN}/doctor`,
         '\nYou will be able to view their readings and reports. You cannot change them.',
       ].join('\n'),
       html: `<p>${who} has invited you to see their blood pressure history in Measure Pressure.</p>
 ${input.note ? `<p><em>${input.note}</em></p>` : ''}
-<p><a href="${config.WEB_ORIGIN}">Sign in to accept</a></p>
+<p><a href="${config.WEB_ORIGIN}/doctor">Sign in to accept</a></p>
 <p style="color:#666;font-size:13px">You will be able to view their readings and reports. You cannot change them.</p>`,
     })
     .catch((err: unknown) => {

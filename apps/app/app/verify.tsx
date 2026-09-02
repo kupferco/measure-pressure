@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Body, Button, Loading, Screen, Title } from '../src/components/ui';
+import { api } from '../src/lib/api';
 import { useAuth } from '../src/lib/auth';
 import { spacing } from '../src/lib/theme';
 
@@ -30,7 +31,21 @@ export default function VerifyScreen() {
       return;
     }
     signInWithToken(token)
-      .then(() => router.replace('/'))
+      .then(async () => {
+        /*
+         * The sign-in email cannot know who is clicking it, so every link lands
+         * here. Someone with patients sharing with them and no readings of their
+         * own is a clinician, and belongs in the other app - which is served from
+         * the same origin, so the session cookie just made is already valid there.
+         */
+        const { patientCount, readingCount, pendingInvitations } = await api.me();
+        const isClinician = (patientCount > 0 || pendingInvitations > 0) && readingCount === 0;
+        if (isClinician && Platform.OS === 'web') {
+          globalThis.location.assign('/doctor');
+          return;
+        }
+        router.replace('/');
+      })
       .catch((err) =>
         setError(
           err instanceof Error
