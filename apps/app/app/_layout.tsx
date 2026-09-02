@@ -17,9 +17,12 @@ function AuthGate() {
 
   useEffect(() => {
     if (loading) return;
-    const onSignIn = segments[0] === 'sign-in';
-    if (!user && !onSignIn) router.replace('/sign-in');
-    else if (user && onSignIn) router.replace('/');
+    // /verify is reached from a link in an email, by definition before there is a
+    // session - so it has to be allowed through, or the gate redirects away from
+    // the very screen that would create one.
+    const onPublicRoute = segments[0] === 'sign-in' || segments[0] === 'verify';
+    if (!user && !onPublicRoute) router.replace('/sign-in');
+    else if (user && segments[0] === 'sign-in') router.replace('/');
   }, [user, loading, segments, router]);
 
   if (loading) return <Loading />;
@@ -37,6 +40,7 @@ function AuthGate() {
       {/* The camera owns the whole screen, so it carries no header. */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+      <Stack.Screen name="verify" options={{ headerShown: false }} />
       <Stack.Screen name="confirm" options={{ title: 'Check the numbers' }} />
       <Stack.Screen name="dashboard" options={{ title: 'Your readings' }} />
       <Stack.Screen name="insights" options={{ title: 'What affects you' }} />

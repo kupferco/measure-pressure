@@ -96,6 +96,9 @@ export const api = {
     request<{ sent: true }>('/auth/request', { body: { email, ...(name ? { name } : {}) } }),
   verifyCode: (email: string, code: string) =>
     request<{ user: User; sessionToken: string }>('/auth/verify', { body: { email, code } }),
+  /** The other half of the login email: the link, used by the web build. */
+  verifyToken: (token: string) =>
+    request<{ user: User; sessionToken: string }>('/auth/verify', { body: { token } }),
   me: () => request<{ user: User }>('/auth/me'),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
 

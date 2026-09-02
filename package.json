@@ -23,6 +23,7 @@
     "db:down": "docker compose down",
     "db:apply": "node scripts/atlas.mjs schema apply --env app",
     "db:plan": "node scripts/atlas.mjs schema apply --env app --dry-run",
-    "db:inspect": "node scripts/atlas.mjs schema inspect --env app --format \"{{ sql . }}\""
+    "db:inspect": "node scripts/atlas.mjs schema inspect --env app --format \"{{ sql . }}\"",
+    "seed": "node scripts/seed.mjs"
   }
 }

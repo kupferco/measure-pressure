@@ -8,6 +8,7 @@ interface AuthState {
   /** True until we have checked for an existing session on this device. */
   loading: boolean;
   signIn(email: string, code: string): Promise<void>;
+  signInWithToken(token: string): Promise<void>;
   signOut(): Promise<void>;
 }
 
@@ -43,6 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   }, []);
 
+  const signInWithToken = useCallback(async (token: string) => {
+    const { user, sessionToken } = await api.verifyToken(token);
+    await saveToken(sessionToken);
+    setUser(user);
+  }, []);
+
   const signOut = useCallback(async () => {
     await api.logout().catch(() => {
       // Even if the server call fails, drop the local credential.
@@ -52,8 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut }),
-    [user, loading, signIn, signOut],
+    () => ({ user, loading, signIn, signInWithToken, signOut }),
+    [user, loading, signIn, signInWithToken, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
