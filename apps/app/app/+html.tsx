@@ -32,6 +32,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-title" content="Pressure" />
         <meta name="theme-color" content="#0f172a" />
 
+        {/* Replacing Expo's default document also replaced its <title>. */}
+        <title>Measure Pressure</title>
         <meta name="description" content="Track your blood pressure by photographing your monitor." />
 
         {/*

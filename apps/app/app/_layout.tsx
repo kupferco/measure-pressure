@@ -12,7 +12,7 @@ import { colors } from '../src/lib/theme';
  * once they do. Everything else is reachable from the camera.
  */
 function AuthGate() {
-  const { user, loading, patientCount, readingCount, pendingInvitations } = useAuth();
+  const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   // The start-screen preference applies once per launch. Without this it would
@@ -50,24 +50,18 @@ function AuthGate() {
     // on some branches and simply never navigated, which left anyone signing in on
     // the web staring at a spinner: the sign-in screen waits to be replaced, and
     // nothing replaced it.
-    const destination = pickDestination();
+    // Exactly one destination is chosen, always. An earlier version returned early
+    // on some branches and simply never navigated, which left anyone signing in on
+    // the web staring at a spinner: the sign-in screen waits to be replaced, and
+    // nothing replaced it.
+    //
+    // Honour the camera preference only where it can be honoured. In a browser the
+    // camera opens only from a real tap, so a viewfinder route would be a dead
+    // screen; Home already puts the button under the thumb.
+    const wantsCamera = user.startOnCamera && Platform.OS !== 'web';
+    const destination = wantsCamera ? '/capture' : '/';
     if (justSignedIn || destination !== '/') router.replace(destination);
-
-    function pickDestination(): '/' | '/capture' | '/patients' {
-      // Someone here to read other people's readings - or invited to - should not
-      // land on a camera. A pending invitation counts: they have no patients yet
-      // and still need somewhere to accept.
-      const isVisitingDoctor =
-        (patientCount > 0 || pendingInvitations > 0) && readingCount === 0;
-      if (isVisitingDoctor) return '/patients';
-
-      // Honour the camera preference only where it can be honoured. In a browser
-      // the camera opens only from a real tap, so a viewfinder route would be a
-      // dead screen; Home already puts the button under the thumb.
-      if (user!.startOnCamera && Platform.OS !== 'web') return '/capture';
-      return '/';
-    }
-  }, [user, loading, patientCount, readingCount, pendingInvitations, segments, router]);
+  }, [user, loading, segments, router]);
 
   if (loading) return <Loading />;
 

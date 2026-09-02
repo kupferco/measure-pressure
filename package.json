@@ -8,7 +8,8 @@
   "workspaces": [
     "packages/shared",
     "apps/api",
-    "apps/app"
+    "apps/app",
+    "apps/doctor"
   ],
   "scripts": {
     "dev:api": "npm run build:shared && npm run dev --workspace=@mp/api",
@@ -24,6 +25,8 @@
     "db:apply": "node scripts/atlas.mjs schema apply --env app",
     "db:plan": "node scripts/atlas.mjs schema apply --env app --dry-run",
     "db:inspect": "node scripts/atlas.mjs schema inspect --env app --format \"{{ sql . }}\"",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "dev:doctor": "npm run build:shared && npm run dev --workspace=@mp/doctor",
+    "build:doctor": "npm run build:shared && npm run build --workspace=@mp/doctor"
   }
 }

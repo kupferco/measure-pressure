@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Reading, Summary } from '@mp/shared';
-import { BP_CATEGORY_LABEL, classify } from '@mp/shared';
+import { BP_CATEGORY_LABEL, classify, DEFAULT_RANGE, describeWindow, rangeDays, withinRange, type RangeId } from '@mp/shared';
 import { RangeTabs } from '../../src/components/RangeTabs';
 import { TimeOfDayTable } from '../../src/components/TimeOfDayTable';
 import {
@@ -17,7 +17,6 @@ import {
   Loading,
 } from '../../src/components/ui';
 import { api } from '../../src/lib/api';
-import { DEFAULT_RANGE, describeWindow, rangeDays, type RangeId } from '../../src/lib/ranges';
 import { categoryColors, colors, radius, spacing, type } from '../../src/lib/theme';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
@@ -40,7 +39,7 @@ export default function ReportsScreen() {
     const from = new Date(Date.now() - rangeDays(id) * 86_400_000).toISOString();
     try {
       const [summaryResult, readingsResult] = await Promise.all([
-        api.summary(timeZone, undefined, from),
+        api.summary(timeZone, from),
         api.listReadings({ from, limit: 200 }),
       ]);
       setSummary(summaryResult.summary);

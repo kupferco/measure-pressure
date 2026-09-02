@@ -1,5 +1,5 @@
+import { RANGES, type RangeId } from '@mp/shared';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { RANGES, type RangeId } from '../lib/ranges';
 import { colors, radius, spacing, type } from '../lib/theme';
 
 /**

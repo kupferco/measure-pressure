@@ -13,19 +13,9 @@ import { colors, radius, spacing, type } from '../src/lib/theme';
  * still be invited - the invitation waits for them. Access is read-only and can be
  * withdrawn at any time from here.
  */
-type Patient = {
-  id: string;
-  name: string | null;
-  email: string;
-  readingCount: number;
-  lastMeasuredAt: string | null;
-  lastReading: { systolic: number; diastolic: number } | null;
-};
-
 export default function SharingScreen() {
   const router = useRouter();
   const [shares, setShares] = useState<{ granted: Share[]; received: Share[] } | null>(null);
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,21 +23,10 @@ export default function SharingScreen() {
 
   const load = async () => {
     try {
-      const [shareResult, patientResult] = await Promise.all([
-        api.listShares(),
-        // Only meaningful for a doctor; an empty list for everyone else.
-        api.listPatients().catch(() => ({ patients: [] })),
-      ]);
-      setShares(shareResult);
-      setPatients(patientResult.patients);
+      setShares(await api.listShares());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load sharing.');
     }
-  };
-
-  const respond = async (id: string, accept: boolean) => {
-    await api.respondToShare(id, accept).catch(() => {});
-    await load();
   };
 
   useEffect(() => {
@@ -136,14 +115,6 @@ export default function SharingScreen() {
             </Card>
           ))}
         </View>
-      ) : null}
-
-      {patients.length > 0 ? (
-        <Button
-          label={`You can see ${patients.length} ${patients.length === 1 ? 'person' : 'people'}’s readings →`}
-          variant="secondary"
-          onPress={() => router.push('/patients')}
-        />
       ) : null}
 
     </Screen>

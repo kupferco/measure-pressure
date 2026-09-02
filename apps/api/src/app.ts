@@ -96,6 +96,17 @@ export async function buildApp(): Promise<FastifyInstance> {
 }
 
 /**
+ * Where the two client builds live inside the image. Both are absent in
+ * development, where each has its own dev server.
+ */
+function buildRoot(name: string): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  return process.env[name === 'web' ? 'WEB_ROOT' : 'DOCTOR_ROOT']
+    ? resolve(process.env[name === 'web' ? 'WEB_ROOT' : 'DOCTOR_ROOT']!)
+    : resolve(here, `../${name}`);
+}
+
+/**
  * Serves the Expo web export from the same container as the API.
  *
  * One service instead of two: no CORS, one URL to remember, one thing to deploy.
@@ -103,10 +114,20 @@ export async function buildApp(): Promise<FastifyInstance> {
  * Expo dev server handles the web app instead.
  */
 async function serveWebBuild(app: FastifyInstance): Promise<void> {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const webRoot = process.env.WEB_ROOT
-    ? resolve(process.env.WEB_ROOT)
-    : resolve(here, '../web');
+  const webRoot = buildRoot('web');
+  const doctorRoot = buildRoot('doctor');
+  const hasDoctor = existsSync(join(doctorRoot, 'index.html'));
+
+  // The clinician app is a separate build with its own conventions, served under
+  // its own prefix from this same container. One service, one origin - so its
+  // session cookie is the same cookie, with no CORS between them.
+  if (hasDoctor) {
+    await app.register(fastifyStatic, {
+      root: doctorRoot,
+      prefix: '/doctor/',
+      decorateReply: false,
+    });
+  }
 
   const apiNotFound = (reply: FastifyReply) =>
     reply.code(404).send({ error: 'not_found', message: 'No such endpoint.' });
@@ -123,6 +144,12 @@ async function serveWebBuild(app: FastifyInstance): Promise<void> {
   // call has to fall through to index.html so deep links work on refresh.
   app.setNotFoundHandler((request, reply) => {
     if (request.url.startsWith('/api/')) return apiNotFound(reply);
+
+    // The clinician app routes on the client, so any /doctor path it does not
+    // have a file for falls back to its own index.
+    if (hasDoctor && (request.url === '/doctor' || request.url.startsWith('/doctor/'))) {
+      return reply.type('text/html').send(readFileSync(join(doctorRoot, 'index.html')));
+    }
 
     // The web build is statically rendered: every route has its own pre-rendered
     // file, so /dashboard should serve dashboard.html rather than making the

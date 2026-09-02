@@ -19,7 +19,9 @@ A personal app for tracking my own blood pressure, and my father's. Not a produc
   by time of day.
 - **Compares** readings you tagged against the rest, so "does sleeping badly
   actually matter?" gets an arithmetic answer rather than a guess.
-- **Shares with your doctor**, read-only, revocable, and logged.
+- **Shares with your doctor**, read-only, revocable, and logged. They get their own
+  app: a light, printable blood-pressure diary - one row per day, one column per
+  part of the day.
 
 ## Running it
 
@@ -32,6 +34,7 @@ npm run db:apply              # apply it
 
 npm run dev:api               # API on :8080
 npm run dev:app               # Expo - scan the QR with Expo Go, or press w for the browser
+npm run dev:doctor            # the clinician app on :5174
 ```
 
 No email account needed locally: `MAIL_TRANSPORT=console` prints your sign-in code
@@ -52,7 +55,8 @@ npm run db:up                 # Postgres in Docker on :55432
 
 ```
 apps/api/          Fastify API - auth, readings, tags, scans, reports, sharing
-apps/app/          Expo app - one codebase, iOS native and web
+apps/app/          Expo app - the patient, on iOS and the web
+apps/doctor/       Vite + React - the clinician, web only
 packages/shared/   Domain rules and API contracts used by both
 db/schema/         Declarative schema - what the database should look like
 deploy/            Dockerfile, Cloud Build, deploy script, one-time GCP setup

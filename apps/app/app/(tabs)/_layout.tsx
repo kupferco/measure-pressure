@@ -1,18 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { useAuth } from '../../src/lib/auth';
 import { colors } from '../../src/lib/theme';
 
 /**
  * The bottom navigation.
  *
- * Home, Reports and Profile are always there. Patients appears only for someone
- * who actually has patients - there is no role on an account, so the navigation
- * is assembled from what is true rather than from what someone declared.
+ * Three tabs, the same for everyone. Reading other people's readings is a
+ * different job on a different device, and lives in the separate clinician app -
+ * see apps/doctor.
  */
 export default function TabsLayout() {
-  const { patientCount, pendingInvitations } = useAuth();
-
   return (
     <Tabs
       screenOptions={{
@@ -42,16 +39,6 @@ export default function TabsLayout() {
         options={{
           title: 'Reports',
           tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="patients"
-        options={{
-          title: 'Patients',
-          // href null removes it from the bar entirely rather than showing an
-          // empty tab to everyone who is not a doctor.
-          href: patientCount > 0 || pendingInvitations > 0 ? '/patients' : null,
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
         }}
       />
       <Tabs.Screen

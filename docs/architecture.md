@@ -12,7 +12,8 @@ add context, and over time see what actually moves the readings. Expected users:
 |---|---|---|---|
 | 1 | Client | **Expo (React Native) - one codebase, iOS native + web build** | One codebase covers three ways of using it: Expo Go today, a real native build later, and the web build. The doctor always gets the web version. |
 | 2 | Auth | **Email magic link, email only** | No passwords to store, hash, reset or leak - which matters for health data. An account is an email address; a name is profile information set later, so the same person cannot arrive under three spellings. |
-| 8 | Doctor access | **Derived from sharing, not a role on the account** | Nobody is flagged a doctor. You can read someone's readings because they shared them with you, and the home screen follows from that - so one person can track their own pressure and read their patients'. |
+| 8 | Doctor access | **Derived from sharing, not a role on the account** | Nobody is flagged a doctor. You can read someone's readings because they shared them with you. |
+| 9 | Clinician app | **A separate Vite/React app in `apps/doctor`** | The doctor's screen is a table, and tables are what React Native Web is worst at. Different audience, different device, different job - so a different client, sharing the API and the domain rules. |
 | 3 | OCR | **Google Cloud Vision** | Stays inside GCP. Compensated for with layout-aware parsing and a mandatory confirm screen (see below). |
 | 4 | Backend | **Fastify + Postgres** | One container on Cloud Run, serving the API *and* the web build. One service, one URL, no CORS. |
 | 5 | Database | **One Cloud SQL Postgres database for local, staging and prod** | Already paid for, and one thing to manage rather than three. |
@@ -167,6 +168,36 @@ Two guard rails, because every environment shares one database:
 
 Atlas needs Docker running: it spins up a throwaway Postgres to normalise the
 declared schema before comparing. That scratch database is never your data.
+
+## Two clients, on purpose
+
+The patient app and the clinician app are separate codebases, which is the opposite
+of the earlier decision to collapse native and web into one. It is not a reversal of
+that reasoning - it is the same reasoning applied to a different question.
+
+Collapsing native and web avoided duplicating **one audience's** screens across two
+renderers. This split serves **two audiences** whose screens have almost nothing in
+common:
+
+| | Patient | Clinician |
+|---|---|---|
+| Device | a phone, one-handed, at 7am | a desktop, during an appointment |
+| Primary act | photograph a monitor | read a table |
+| Interface | dark, large targets, camera-first | light, dense, printable |
+| Runs on | iOS native and mobile web | web only |
+
+Building the clinician view in React Native Web was possible and was tried; the
+diary grid is the reason it was abandoned. Tables - alignment, zebra striping,
+`@media print`, real `<th scope>` semantics - are the one thing RNW cannot do
+without fighting it.
+
+What is genuinely shared stays shared: the API, and `packages/shared`, which holds
+the blood-pressure rules, the category thresholds, the time ranges and every
+request and response shape. Only presentation is duplicated.
+
+Both are served by the same API container - the patient app at `/`, the clinician
+app at `/doctor` - so they are the same origin and share one session cookie, with
+no CORS between them.
 
 ## Deployment
 

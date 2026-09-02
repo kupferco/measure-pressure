@@ -133,7 +133,7 @@ export const api = {
   deleteTag: (id: string) => request<{ archived: boolean }>(`/tags/${id}`, { method: 'DELETE' }),
 
   // readings
-  listReadings: (params: { from?: string; to?: string; limit?: number; patientId?: string } = {}) => {
+  listReadings: (params: { from?: string; to?: string; limit?: number } = {}) => {
     const query = new URLSearchParams(
       Object.entries(params).flatMap(([k, v]) => (v === undefined ? [] : [[k, String(v)]])),
     );
@@ -166,11 +166,9 @@ export const api = {
   },
 
   // reports
-  // patientId is how a doctor views someone else's history; patients omit it and
-  // the API resolves the subject to the caller.
-  summary: (tz: string, patientId?: string, from?: string) =>
-    request<{ summary: Summary }>(`/reports/summary?${reportQuery(tz, patientId, from)}`),
-  series: (tz: string, patientId?: string) =>
+  summary: (tz: string, from?: string) =>
+    request<{ summary: Summary }>(`/reports/summary?${reportQuery(tz, from)}`),
+  series: (tz: string) =>
     request<{
       points: {
         id: string;
@@ -181,33 +179,18 @@ export const api = {
         category: string;
       }[];
       daily: { day: string; systolic: number; diastolic: number; count: number }[];
-    }>(`/reports/series?${reportQuery(tz, patientId)}`),
-  insights: (patientId?: string) =>
-    request<{ insights: Insight[] }>(`/reports/insights?${reportQuery('UTC', patientId)}`),
+    }>(`/reports/series?${reportQuery(tz)}`),
+  insights: () => request<{ insights: Insight[] }>(`/reports/insights?${reportQuery('UTC')}`),
 
   // sharing
   listShares: () => request<{ granted: Share[]; received: Share[] }>('/shares'),
   inviteDoctor: (doctorEmail: string, note?: string) =>
     request<{ share: Share }>('/shares', { body: { doctorEmail, ...(note ? { note } : {}) } }),
   revokeShare: (id: string) => request<void>(`/shares/${id}`, { method: 'DELETE' }),
-  respondToShare: (id: string, accept: boolean) =>
-    request<{ share: Share }>(`/shares/${id}/respond`, { body: { accept } }),
-  listPatients: () =>
-    request<{
-      patients: {
-        id: string;
-        name: string | null;
-        email: string;
-        readingCount: number;
-        lastMeasuredAt: string | null;
-        lastReading: { systolic: number; diastolic: number } | null;
-      }[];
-    }>('/patients'),
 };
 
-function reportQuery(tz: string, patientId?: string, from?: string): string {
+function reportQuery(tz: string, from?: string): string {
   const query = new URLSearchParams({ tz });
-  if (patientId) query.set('patientId', patientId);
   if (from) query.set('from', from);
   return query.toString();
 }
