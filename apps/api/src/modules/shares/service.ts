@@ -101,8 +101,18 @@ ${input.note ? `<p><em>${input.note}</em></p>` : ''}
 <p><a href="${config.WEB_ORIGIN}">Sign in to accept</a></p>
 <p style="color:#666;font-size:13px">You will be able to view their readings and reports. You cannot change them.</p>`,
     })
-    .catch(() => {
-      // The invitation exists either way; the doctor will see it on next sign-in.
+    .catch((err: unknown) => {
+      /*
+       * The invitation row exists either way, and the doctor will see it when they
+       * next sign in - so this is not fatal. But swallowing it silently means a
+       * misconfigured sender looks like a doctor who never replied, so it is
+       * logged with enough detail to act on.
+       */
+      console.error(
+        '[shares] could not email the invitation to %s: %s',
+        input.doctorEmail,
+        err instanceof Error ? err.message : String(err),
+      );
     });
 
   return share;

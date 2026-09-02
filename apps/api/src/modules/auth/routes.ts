@@ -7,6 +7,7 @@ import {
   verifyMagicLinkSchema,
 } from '@mp/shared';
 import { ApiError } from '../../lib/errors.js';
+import { MailDeliveryError } from '../../lib/mailer.js';
 import { requireAuth, SESSION_COOKIE } from '../../lib/auth-plugin.js';
 import {
   describeUsage,
@@ -34,8 +35,29 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       try {
         await requestLogin({ ...input, ip: request.ip });
       } catch (err) {
-        if (err instanceof ApiError && err.statusCode === 429) throw err;
-        request.log.error({ err }, 'failed to send login email');
+        if (err instanceof ApiError) throw err;
+
+        /*
+         * Say so when the email is not coming.
+         *
+         * This endpoint deliberately answers the same way for an address that has
+         * an account and one that does not - but a delivery failure is not about
+         * the address at all, so reporting it reveals nothing. The alternative,
+         * replying "sent" regardless, leaves someone watching an inbox for a
+         * message that was refused.
+         */
+        if (err instanceof MailDeliveryError) {
+          request.log.error({ reason: err.message }, 'could not send the sign-in email');
+          throw new ApiError(
+            502,
+            'mail_failed',
+            err.configuration
+              ? 'This app cannot send email at the moment, so the code could not be sent. ' +
+                  'Whoever runs it needs to check the mail configuration.'
+              : 'The code could not be sent just now. Please try again in a moment.',
+          );
+        }
+        throw err;
       }
       return reply.send({ sent: true });
     },

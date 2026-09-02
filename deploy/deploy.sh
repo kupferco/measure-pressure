@@ -41,7 +41,7 @@ WEB_ORIGIN="${WEB_ORIGIN:-https://measure-pressure-app.web.app}"
 # To send to anyone else, verify a domain in Resend and set this. Use a SUBDOMAIN -
 # mail.kupfer.co rather than kupfer.co - so its SPF and DKIM records cannot
 # interfere with the mail already running on the apex.
-MAIL_FROM="${MAIL_FROM:-Measure Pressure <onboarding@resend.dev>}"
+MAIL_FROM="${MAIL_FROM:-Measure Pressure <noreply@kupfer.co>}"
 
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/api"
 TAG="$(git rev-parse --short HEAD)$(git diff --quiet || echo '-dirty')"

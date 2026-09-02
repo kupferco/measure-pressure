@@ -12,6 +12,24 @@ export interface Mailer {
 }
 
 /**
+ * The message could not be handed to the provider.
+ *
+ * Separated from other failures because it is almost always configuration rather
+ * than a transient fault, and because the person waiting for a sign-in code
+ * deserves to be told the email is not coming instead of being left watching an
+ * inbox.
+ */
+export class MailDeliveryError extends Error {
+  readonly configuration: boolean;
+
+  constructor(message: string, options: { configuration: boolean }) {
+    super(message);
+    this.name = 'MailDeliveryError';
+    this.configuration = options.configuration;
+  }
+}
+
+/**
  * Local development. Prints the message - including the login code - to the server
  * log, so signing in needs no mail provider, no API key and no inbox.
  */
@@ -51,10 +69,43 @@ class ResendMailer implements Mailer {
         html: email.html,
       }),
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Resend rejected the message (${res.status}): ${body.slice(0, 500)}`);
+    if (res.ok) return;
+
+    const body = await res.text().catch(() => '');
+    let detail = body.slice(0, 500);
+    let name = '';
+    try {
+      const parsed = JSON.parse(body) as { message?: string; name?: string };
+      detail = parsed.message ?? detail;
+      name = parsed.name ?? '';
+    } catch {
+      // Not JSON; the raw body is the best detail available.
     }
+
+    /*
+     * The failure worth naming precisely.
+     *
+     * Resend's shared sender, onboarding@resend.dev, is a sandbox: it delivers
+     * only to the address the Resend account was registered with and returns 403
+     * for everyone else. That is invisible while you are testing with your own
+     * address and then breaks the moment you invite somebody - which is exactly
+     * when nobody is watching the logs.
+     */
+    const usingSandboxSender = /@resend\.dev/i.test(config.MAIL_FROM);
+    if (res.status === 403 && usingSandboxSender) {
+      throw new MailDeliveryError(
+        `Resend refused to send to ${email.to}. The sender ${config.MAIL_FROM} is ` +
+          'Resend\'s sandbox address, which only delivers to the address the Resend ' +
+          'account was registered with. Verify a domain in Resend and set MAIL_FROM ' +
+          'to an address on it.',
+        { configuration: true },
+      );
+    }
+
+    throw new MailDeliveryError(
+      `Resend rejected the message (${res.status}${name ? ` ${name}` : ''}): ${detail}`,
+      { configuration: res.status === 401 || res.status === 403 },
+    );
   }
 }
 
