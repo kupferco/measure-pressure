@@ -1,5 +1,5 @@
 import { ImageAnnotatorClient } from '@google-cloud/vision';
-import type { OcrToken } from './omron-parser.js';
+import type { OcrToken, Vertex } from './omron-parser.js';
 
 /**
  * Adapter around Cloud Vision.
@@ -12,16 +12,22 @@ export interface OcrEngine {
   detect(image: Buffer): Promise<{ tokens: OcrToken[]; raw: unknown }>;
 }
 
-type Vertex = { x?: number | null; y?: number | null };
+type RawVertex = { x?: number | null; y?: number | null };
 
-/** Vision gives a polygon (which may be rotated); we need an axis-aligned box. */
-function toBox(vertices: readonly Vertex[] | null | undefined) {
+/**
+ * Vision gives a polygon whose corners are in the text's reading order, so it is
+ * rotated when the photo is. We hand the parser both: the axis-aligned box it does
+ * its comparisons with, and the polygon it needs to work out which way up the
+ * display was before making any of them.
+ */
+function toGeometry(vertices: readonly RawVertex[] | null | undefined) {
   if (!vertices || vertices.length === 0) return null;
-  const xs = vertices.map((v) => v.x ?? 0);
-  const ys = vertices.map((v) => v.y ?? 0);
+  const poly: Vertex[] = vertices.map((v) => ({ x: v.x ?? 0, y: v.y ?? 0 }));
+  const xs = poly.map((v) => v.x);
+  const ys = poly.map((v) => v.y);
   const x = Math.min(...xs);
   const y = Math.min(...ys);
-  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+  return { box: { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y }, poly };
 }
 
 class CloudVisionEngine implements OcrEngine {
@@ -42,9 +48,11 @@ class CloudVisionEngine implements OcrEngine {
         for (const paragraph of block.paragraphs ?? []) {
           for (const word of paragraph.words ?? []) {
             const text = (word.symbols ?? []).map((s) => s.text ?? '').join('');
-            const box = toBox(word.boundingBox?.vertices);
-            if (!text || !box || box.width <= 0 || box.height <= 0) continue;
-            tokens.push({ text, confidence: word.confidence ?? 0, box });
+            const geometry = toGeometry(word.boundingBox?.vertices);
+            if (!text || !geometry) continue;
+            const { box, poly } = geometry;
+            if (box.width <= 0 || box.height <= 0) continue;
+            tokens.push({ text, confidence: word.confidence ?? 0, box, poly });
           }
         }
       }
@@ -54,9 +62,9 @@ class CloudVisionEngine implements OcrEngine {
     // structural signals carry the score instead.
     if (tokens.length === 0) {
       for (const annotation of (result.textAnnotations ?? []).slice(1)) {
-        const box = toBox(annotation.boundingPoly?.vertices);
-        if (!annotation.description || !box) continue;
-        tokens.push({ text: annotation.description, confidence: 0, box });
+        const geometry = toGeometry(annotation.boundingPoly?.vertices);
+        if (!annotation.description || !geometry) continue;
+        tokens.push({ text: annotation.description, confidence: 0, ...geometry });
       }
     }
 

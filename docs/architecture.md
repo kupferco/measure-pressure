@@ -68,6 +68,8 @@ editable fields. One tap accepts them.
 order - SYS on top, DIA below it, PULSE at the bottom - and label them. So rather
 than trusting Vision's reading order, the parser:
 
+0. works out which way up the display was, from the direction Vision's word
+   polygons run, and turns every bounding box upright
 1. takes every numeric token Vision found, with its bounding box
 2. sorts them by vertical position
 3. anchors on the `SYS` / `DIA` / `PULSE` labels when they were legible
@@ -75,9 +77,17 @@ than trusting Vision's reading order, the parser:
 5. sanity-checks the pair (systolic must exceed diastolic)
 6. emits a confidence score and human-readable warnings for the confirm screen
 
+Step 0 was added after the first real capture, and it is the one that matters.
+Everything below it reasons about above, below and larger-than, and all of it was
+wrong by ninety degrees: Cloud Vision ignores the EXIF orientation tag, so a photo
+taken in portrait reaches the parser lying on its side. It read 94/134 with no
+pulse from a photo Vision had transcribed perfectly. Deriving the rotation from the
+text's own geometry, rather than from EXIF, costs nothing and also covers the case
+EXIF cannot describe - a monitor photographed sideways within an upright frame.
+
 Every scan is stored with its **raw Vision response** in `scans.vision_raw`. That
-turns real Omron photos into a regression corpus, so the parser can be improved
-later against actual failures rather than guesses. When a user edits a number the
+turns real Omron photos into a regression corpus, and `npm run scan:check --
+--stored` replays the lot through the current parser without a network call. When a user edits a number the
 OCR proposed, `readings.ocr_corrected` records it - a free, honest accuracy metric.
 
 ---

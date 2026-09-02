@@ -9,7 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "scan:check": "tsx --env-file=../../.env scripts/check-scan.mts"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",

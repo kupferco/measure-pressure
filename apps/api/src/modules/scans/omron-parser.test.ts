@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { parseOmronDisplay, type OcrToken } from './omron-parser.js';
+import realCapture from './__fixtures__/omron-134-94-79.json' with { type: 'json' };
+import { parseOmronDisplay, type BoundingBox, type OcrToken, type Vertex } from './omron-parser.js';
+
+/** Turns a point a quarter-circle clockwise, the way a different phone grip would. */
+function rotateForTest({ x, y }: Vertex, turns: 1 | 2 | 3): Vertex {
+  if (turns === 1) return { x: -y, y: x };
+  if (turns === 2) return { x: -x, y: -y };
+  return { x: y, y: -x };
+}
+
+function boxOf(poly: readonly Vertex[]): BoundingBox {
+  const xs = poly.map((v) => v.x);
+  const ys = poly.map((v) => v.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
 
 /** Builds a token; `size` stands in for glyph height so the tests can express type scale. */
 function token(text: string, x: number, y: number, size = 40, confidence = 0.9): OcrToken {
@@ -133,5 +149,51 @@ describe('parseOmronDisplay', () => {
     const result = parseOmronDisplay(unsure);
     expect(result.confidence).toBeLessThan(confident.confidence);
     expect(result.warnings.some((w) => /light|glare/i.test(w))).toBe(true);
+  });
+});
+
+/**
+ * The first tests in this file that are not synthetic.
+ *
+ * Everything above was written from an idea of what an Omron looks like, and all of
+ * it passed while the feature was failing on every real photograph. The fixture is
+ * Cloud Vision's untouched output for an actual capture, lifted from the
+ * `scans.vision_raw` column that exists for exactly this purpose.
+ */
+describe('a real capture', () => {
+  it('reads 134/94 pulse 79 from a photo taken in portrait', () => {
+    const result = parseOmronDisplay(realCapture.tokens as OcrToken[]);
+    expect(result).toMatchObject(realCapture.expected);
+  });
+
+  it('works out that the display was lying on its side', () => {
+    const result = parseOmronDisplay(realCapture.tokens as OcrToken[]);
+    // A quarter-turn clockwise puts SYS above DIA above PULSE, which is the only
+    // arrangement in which the rest of the parser means anything.
+    expect(result.evidence.quarterTurns).toBe(1);
+  });
+
+  it('uses the printed labels, not a guess at the layout', () => {
+    const result = parseOmronDisplay(realCapture.tokens as OcrToken[]);
+    expect(result.evidence.strategy).toBe('labels');
+  });
+
+  it('does not invent problems with a photo that read perfectly', () => {
+    const result = parseOmronDisplay(realCapture.tokens as OcrToken[]);
+    expect(result.warnings).toEqual([]);
+    expect(result.confidence).toBeGreaterThan(0.7);
+  });
+
+  it('reads the same numbers whichever way the phone was held', () => {
+    // Rotating the geometry stands in for the same monitor shot in landscape, or
+    // upside-down, which is what the accelerometer decides for you at 7am.
+    for (const turns of [1, 2, 3] as const) {
+      const turned = (realCapture.tokens as OcrToken[]).map((t) => ({
+        ...t,
+        poly: t.poly!.map((v) => rotateForTest(v, turns)),
+        box: boxOf(t.poly!.map((v) => rotateForTest(v, turns))),
+      }));
+      expect(parseOmronDisplay(turned)).toMatchObject(realCapture.expected);
+    }
   });
 });

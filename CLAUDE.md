@@ -81,10 +81,29 @@ camera -> upload -> Cloud Vision -> Omron parser -> CONFIRM -> save
 
 `apps/api/src/modules/scans/omron-parser.ts` reconstructs the display from
 bounding-box geometry rather than trusting Vision's reading order: Omron stacks
-SYS/DIA/PULSE vertically in larger type than the clock. It is pure and has 14
-tests - but **all of them are synthetic**. The parser has never been measured
-against a real photograph. Every scan stores its raw Vision response in
-`scans.vision_raw` for exactly that purpose.
+SYS/DIA/PULSE vertically in larger type than the clock.
+
+**Everything geometric depends on knowing which way up the photo was.** A phone
+writes its sensor's landscape pixels and puts the rotation in an EXIF tag; Cloud
+Vision reads the pixels and ignores the tag. A portrait photo - which is how you
+hold a phone over a monitor on a table - therefore arrives with the display on its
+side, and "above", "below" and "taller than" are all ninety degrees out. The parser
+recovers the rotation from Vision's own word polygons, whose corners come back in
+reading order, and turns every box upright before it reads anything. This is the
+first thing to check if a capture comes out wrong: `evidence.quarterTurns`.
+
+Vision reads these displays better than you would expect - the digits are usually
+right. When a scan is wrong, suspect the parser, not the OCR. Confirm it:
+
+```sh
+npm run scan:check -- photo.jpg    # Vision + parse, one photo
+npm run scan:check -- --stored     # replay every stored capture, no network
+```
+
+Every scan keeps its raw Vision response in `scans.vision_raw`, so `--stored` is a
+free regression run over real history. `omron-parser.test.ts` has one fixture taken
+from an actual capture; the rest of the tests are synthetic and once passed happily
+while the feature failed on every real photograph.
 
 A failed scan falls back to manual entry and looks the same whether Vision
 errored, returned nothing, or was never called. Check the logs before assuming
