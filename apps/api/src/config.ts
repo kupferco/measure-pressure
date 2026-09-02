@@ -22,7 +22,13 @@ const envSchema = z.object({
   /** Deep-link scheme so a magic link opened on the phone lands in the native app. */
   MOBILE_SCHEME: z.string().default('measurepressure'),
 
-  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(60),
+  /**
+   * Sessions are a sliding window: every request pushes the expiry back by this
+   * many days. Use the app regularly and you stay signed in; leave it untouched
+   * for a week and you sign in again. A lost phone therefore loses access on its
+   * own, which a long fixed window would not do.
+   */
+  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(7),
   MAGIC_LINK_TTL_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
   COOKIE_DOMAIN: z.string().optional(),
 

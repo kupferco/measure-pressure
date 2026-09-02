@@ -25,14 +25,14 @@ declare module 'fastify' {
  * cannot read, so an XSS cannot steal it), the native app carries a Bearer token in
  * secure device storage (where cookies are awkward). Same session row behind both.
  */
-function extractToken(request: FastifyRequest): string | null {
+function extractToken(request: FastifyRequest): { token: string; fromCookie: boolean } | null {
   const header = request.headers.authorization;
   if (header?.startsWith('Bearer ')) {
     const token = header.slice(7).trim();
-    if (token) return token;
+    if (token) return { token, fromCookie: false };
   }
   const cookie = request.cookies?.[SESSION_COOKIE];
-  return cookie ?? null;
+  return cookie ? { token: cookie, fromCookie: true } : null;
 }
 
 const plugin: FastifyPluginAsync = async (app) => {
@@ -57,9 +57,17 @@ const plugin: FastifyPluginAsync = async (app) => {
     this.clearCookie(SESSION_COOKIE, { path: '/' });
   });
 
-  app.addHook('onRequest', async (request) => {
-    const token = extractToken(request);
-    request.currentUser = token ? await resolveSession(token) : null;
+  app.addHook('onRequest', async (request, reply) => {
+    const found = extractToken(request);
+    request.currentUser = found ? await resolveSession(found.token) : null;
+
+    // The session's expiry slides forward on every use, but a cookie carries its
+    // own lifetime in the browser. Without re-issuing it, the cookie would lapse
+    // on a fixed schedule and sign the user out of a session the server still
+    // considers live. The native app stores its token itself and needs none of this.
+    if (request.currentUser && found?.fromCookie) {
+      reply.setSessionCookie(found.token);
+    }
   });
 };
 

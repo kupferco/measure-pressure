@@ -20,24 +20,40 @@ import { loadToken } from './session';
  * EXPO_PUBLIC_ variables are inlined at build time, which is what lets one codebase
  * point at localhost during development and Cloud Run once deployed.
  */
+/** The API's port, taken from .env via app.config.js so it is configured once. */
+const API_PORT =
+  process.env.EXPO_PUBLIC_API_PORT ??
+  (Constants.expoConfig?.extra as { apiPort?: string } | undefined)?.apiPort ??
+  '8080';
+
 function resolveBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL;
   if (configured) return configured.replace(/\/$/, '');
 
-  // Deployed, the web build is served by the API itself, so same-origin requests
-  // need no host at all.
-  if (Platform.OS === 'web') return '';
+  if (Platform.OS === 'web') {
+    // Deployed, the API serves the web build itself, so requests are same-origin
+    // and need no host at all.
+    if (!__DEV__) return '';
+
+    // In development they are NOT same-origin: the Expo dev server serves the app
+    // on 8081 while the API listens on its own port. Asking for /api there returns
+    // Expo's index.html, which fails to parse as JSON. Using the current hostname
+    // rather than "localhost" also keeps this working when the page is opened from
+    // a phone on the same network.
+    const { protocol, hostname } = globalThis.location ?? { protocol: 'http:', hostname: 'localhost' };
+    return `${protocol}//${hostname}:${API_PORT}`;
+  }
 
   // In Expo Go the app runs on a phone, where "localhost" is the phone itself.
   // hostUri is the dev machine's address on the network - the same one the bundle
-  // was just downloaded from - so the API is reachable at that host on port 8080
-  // without anyone having to look up their own IP.
+  // was just downloaded from - so the API is reachable at that host without anyone
+  // having to look up their own IP.
   const hostUri = Constants.expoConfig?.hostUri ?? Constants.expoGoConfig?.debuggerHost;
   const lanHost = hostUri?.split(':')[0];
-  if (lanHost) return `http://${lanHost}:8080`;
+  if (lanHost) return `http://${lanHost}:${API_PORT}`;
 
   // A native build with no configured URL: nothing sensible is left to guess.
-  return 'http://localhost:8080';
+  return `http://localhost:${API_PORT}`;
 }
 
 const BASE_URL = resolveBaseUrl();

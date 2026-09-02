@@ -54,6 +54,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       ? header.slice(7).trim()
       : request.cookies?.[SESSION_COOKIE];
     if (token) await logout(token);
+    // Both credentials point at the same session row, so deleting it is enough.
     reply.clearSessionCookie();
     return reply.send({ ok: true });
   });

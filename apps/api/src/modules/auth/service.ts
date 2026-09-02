@@ -214,15 +214,19 @@ async function finishLogin(
 
 /** Resolves a session token to its user, refreshing last_seen_at. */
 export async function resolveSession(sessionToken: string): Promise<User | null> {
+  // The expiry moves forward on every use, so the window is measured from the
+  // last time the app was opened rather than from when you first signed in.
   const { rows } = await query<UserRow>(
     `with touched as (
-       update sessions set last_seen_at = now()
+       update sessions
+       set last_seen_at = now(),
+           expires_at = now() + make_interval(days => $2)
        where token_hash = $1 and expires_at > now()
        returning user_id
      )
      select u.id, u.email, u.name, u.role, u.created_at
      from touched join users u on u.id = touched.user_id`,
-    [hashToken(sessionToken)],
+    [hashToken(sessionToken), config.SESSION_TTL_DAYS],
   );
   const row = rows[0];
   return row ? toUser(row) : null;
