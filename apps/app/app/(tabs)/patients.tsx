@@ -2,10 +2,10 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import type { Share } from '@mp/shared';
-import { Body, Button, Caption, Card, EmptyState, ErrorNote, Heading, Label, Loading, Screen } from '../src/components/ui';
-import { api } from '../src/lib/api';
-import { useAuth } from '../src/lib/auth';
-import { colors, spacing } from '../src/lib/theme';
+import { Body, Button, Caption, Card, EmptyState, ErrorNote, Heading, Label, Loading, Screen } from '../../src/components/ui';
+import { api } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth';
+import { colors, spacing } from '../../src/lib/theme';
 
 type Patient = {
   id: string;
@@ -25,7 +25,7 @@ type Patient = {
  */
 export default function PatientsScreen() {
   const router = useRouter();
-  const { readingCount, refresh } = useAuth();
+  const { refresh } = useAuth();
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [invitations, setInvitations] = useState<Share[]>([]);
@@ -118,16 +118,6 @@ export default function PatientsScreen() {
           ))}
         </View>
       ) : null}
-
-      <View style={{ gap: spacing.sm, marginTop: 'auto' }}>
-        {/* A doctor may also be tracking their own pressure. */}
-        <Button
-          label={readingCount > 0 ? 'My own readings' : 'Track my own pressure'}
-          variant="secondary"
-          onPress={() => router.replace('/')}
-        />
-        <Button label="Profile" variant="ghost" onPress={() => router.push('/profile')} />
-      </View>
 
       <Caption style={{ color: colors.textFaint }}>
         Every time you open someone's readings it is recorded, so they can see who looked and when.

@@ -32,6 +32,16 @@ const envSchema = z.object({
   MAGIC_LINK_TTL_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
   COOKIE_DOMAIN: z.string().optional(),
 
+  /**
+   * How close together readings have to be to count as one sitting.
+   *
+   * Three measurements a minute apart is the usual advice, but people fumble the
+   * cuff and re-do one, so the window is wider than the three minutes that implies.
+   * A session is also capped at five readings, so a long afternoon of measuring
+   * cannot chain into one enormous average.
+   */
+  READING_SESSION_MINUTES: z.coerce.number().int().min(1).max(120).default(10),
+
   MAIL_TRANSPORT: z.enum(['console', 'resend']).default('console'),
   MAIL_FROM: z.string().default('Measure Pressure <onboarding@resend.dev>'),
   RESEND_API_KEY: z.string().optional(),

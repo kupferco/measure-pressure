@@ -19,7 +19,12 @@ create table users (
   email         text not null unique,
   name          text,
   created_at    timestamptz not null default now(),
-  last_login_at timestamptz
+  last_login_at timestamptz,
+
+  -- Which screen the app opens on. Defaults to the camera, because the common
+  -- case is open, shoot, done - but someone reviewing more than recording will
+  -- want the dashboard instead.
+  start_on_camera boolean not null default true
 );
 
 -- Passwordless login. Only hashes are stored, so a database leak does not hand

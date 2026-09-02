@@ -92,7 +92,7 @@ export default function ConfirmScreen() {
         source: scan ? 'photo' : 'manual',
         scanId: scan?.scanId ?? null,
       });
-      router.replace('/dashboard');
+      router.replace('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that reading.');
       setSaving(false);

@@ -33,9 +33,23 @@ create table readings (
   ocr_corrected  boolean not null default false,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now(),
+
+  -- Groups the readings of one sitting.
+  --
+  -- Taking three measurements a minute apart is how blood pressure is supposed to
+  -- be measured - the first is usually the highest and means the least. Keeping
+  -- them as three independent rows would let a careful day outvote a lazy one in
+  -- every average, so readings taken close together share a session and the
+  -- reports work from the session's mean. Every individual reading is still kept.
+  --
+  -- The default gives a lone reading a session of its own, so there is no such
+  -- thing as an ungrouped reading and reporting needs no special case.
+  session_id     uuid not null default gen_random_uuid(),
+
   constraint systolic_above_diastolic check (systolic > diastolic)
 );
 create index readings_user_measured_idx on readings (user_id, measured_at desc);
+create index readings_session_idx on readings (session_id);
 
 -- Tags belong to the user, not to this codebase: renamed, added to and retired
 -- from inside the app. Archiving rather than deleting means a reading tagged three

@@ -21,8 +21,15 @@ add context, and over time see what actually moves the readings. Expected users:
 
 ### Consequences worth remembering
 
-- **How it actually gets used today:** Expo Go on the phone, and the web build in
-  mobile Safari. Neither needs an Apple Developer account.
+- **How it actually gets used today: the web build, in mobile Safari.** Expo Go is
+  not available here - the iPhone in question caps at Expo Go 54, and this project
+  is on SDK 57, so Expo Go refuses to load it. Downgrading the project to SDK 54
+  would fix that; it was considered and declined, because the web build already
+  covers the phone and is what the doctor uses regardless.
+- **The web build is therefore a first-class target, not a fallback.** It has its
+  own HTML shell (`app/+html.tsx`) so Add to Home Screen launches fullscreen with
+  no browser chrome, and `web.output` is `static` so every route is pre-rendered -
+  which is also what makes that shell apply at all.
 - **A native build needs $99/yr** (Apple Developer Program) whenever that becomes
   worth doing. Installing over USB to your own device is enough - TestFlight is only
   for handing builds to other people.
@@ -81,7 +88,8 @@ Declared across [`db/schema/`](../db/schema/), by area.
 - `magic_links`, `sessions` - passwordless auth; only **hashes** of tokens are
   stored, so a database leak does not yield working credentials
 - `scans` - one row per photo, kept even if the user abandons the confirm screen
-- `readings` - the numbers, timestamp, note, arm, posture, provenance
+- `readings` - the numbers, timestamp, note, arm, posture, provenance, and the
+  `session_id` grouping the readings of one sitting
 - `tags` + `reading_tags` - per-user, editable, **archived rather than deleted** so a
   reading tagged years ago keeps its meaning after a rename
 - `shares` - doctor access, invited by email so the doctor need not exist yet. An
@@ -89,6 +97,19 @@ Declared across [`db/schema/`](../db/schema/), by area.
 - `access_log` - every time one person reads another's readings
 
 ---
+
+## Sittings
+
+Blood pressure is meant to be measured two or three times a minute apart; the first
+reading is usually the highest and means the least. Readings taken within
+`READING_SESSION_MINUTES` of each other therefore share a `session_id`, assigned
+when the reading is saved, and capped at five so a long afternoon cannot chain into
+one enormous average.
+
+**Every individual reading is kept and shown.** The grouping only changes how the
+reports read them: they work from each sitting's mean. Without that, a day you
+measured three times would carry three times the weight of a day you measured once
+in every average, trend and comparison - which rewards carelessness.
 
 ## Reports
 

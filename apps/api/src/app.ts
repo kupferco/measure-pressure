@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cookie from '@fastify/cookie';
@@ -123,6 +123,18 @@ async function serveWebBuild(app: FastifyInstance): Promise<void> {
   // call has to fall through to index.html so deep links work on refresh.
   app.setNotFoundHandler((request, reply) => {
     if (request.url.startsWith('/api/')) return apiNotFound(reply);
+
+    // The web build is statically rendered: every route has its own pre-rendered
+    // file, so /dashboard should serve dashboard.html rather than making the
+    // browser boot the app and route itself. Falls back to index.html for
+    // anything unrecognised, which the client router then resolves.
+    const path = request.url.split('?')[0]?.replace(/^\/+|\/+$/g, '') ?? '';
+    if (/^[a-z0-9\-_/]*$/i.test(path) && path.length > 0) {
+      const candidate = join(webRoot, `${path}.html`);
+      if (candidate.startsWith(webRoot) && existsSync(candidate)) {
+        return reply.type('text/html').send(readFileSync(candidate));
+      }
+    }
     return reply.sendFile('index.html');
   });
 }

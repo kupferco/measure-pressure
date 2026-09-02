@@ -14,6 +14,7 @@ interface UserRow {
   id: string;
   email: string;
   name: string | null;
+  start_on_camera: boolean;
   created_at: Date;
 }
 
@@ -22,6 +23,7 @@ export function toUser(row: UserRow): User {
     id: row.id,
     email: row.email,
     name: row.name,
+    startOnCamera: row.start_on_camera,
     createdAt: row.created_at.toISOString(),
   };
 }
@@ -56,7 +58,7 @@ async function findOrCreateUser(
   email: string,
 ): Promise<{ user: UserRow; isNew: boolean }> {
   const existing = await client.query<UserRow>(
-    'select id, email, name, created_at from users where email = $1',
+    'select id, email, name, start_on_camera, created_at from users where email = $1',
     [email],
   );
   if (existing.rows[0]) return { user: existing.rows[0], isNew: false };
@@ -64,7 +66,7 @@ async function findOrCreateUser(
   // The name is set later, from the profile screen. An account is its email.
   const created = await client.query<UserRow>(
     `insert into users (email) values ($1)
-     returning id, email, name, created_at`,
+     returning id, email, name, start_on_camera, created_at`,
     [email],
   );
   const user = created.rows[0]!;
@@ -198,7 +200,7 @@ async function finishLogin(
 ): Promise<{ user: User; sessionToken: string }> {
   const sessionToken = await createSession(client, userId, userAgent);
   const userRow = await client.query<UserRow>(
-    'select id, email, name, created_at from users where id = $1',
+    'select id, email, name, start_on_camera, created_at from users where id = $1',
     [userId],
   );
   return { user: toUser(userRow.rows[0]!), sessionToken };
@@ -216,7 +218,7 @@ export async function resolveSession(sessionToken: string): Promise<User | null>
        where token_hash = $1 and expires_at > now()
        returning user_id
      )
-     select u.id, u.email, u.name, u.created_at
+     select u.id, u.email, u.name, u.start_on_camera, u.created_at
      from touched join users u on u.id = touched.user_id`,
     [hashToken(sessionToken), config.SESSION_TTL_DAYS],
   );
@@ -228,10 +230,26 @@ export async function logout(sessionToken: string): Promise<void> {
   await query('delete from sessions where token_hash = $1', [hashToken(sessionToken)]);
 }
 
-export async function updateProfile(userId: string, name: string): Promise<User> {
+export async function updateProfile(
+  userId: string,
+  input: { name?: string; startOnCamera?: boolean },
+): Promise<User> {
+  const sets: string[] = [];
+  const values: unknown[] = [userId];
+  if (input.name !== undefined) {
+    values.push(input.name);
+    sets.push(`name = $${values.length}`);
+  }
+  if (input.startOnCamera !== undefined) {
+    values.push(input.startOnCamera);
+    sets.push(`start_on_camera = $${values.length}`);
+  }
+  if (sets.length === 0) throw ApiError.badRequest('Nothing to update.');
+
   const { rows } = await query<UserRow>(
-    'update users set name = $2 where id = $1 returning id, email, name, created_at',
-    [userId, name],
+    `update users set ${sets.join(', ')} where id = $1
+     returning id, email, name, start_on_camera, created_at`,
+    values,
   );
   if (!rows[0]) throw ApiError.notFound('User not found');
   return toUser(rows[0]);
@@ -246,17 +264,24 @@ export async function updateProfile(userId: string, name: string): Promise<User>
  */
 export async function describeUsage(
   userId: string,
-): Promise<{ patientCount: number; readingCount: number }> {
-  const { rows } = await query<{ patients: number; readings: number }>(
+  email: string,
+): Promise<{ patientCount: number; readingCount: number; pendingInvitations: number }> {
+  const { rows } = await query<{ patients: number; readings: number; pending: number }>(
     `select
        (select count(*)::int from shares
          where doctor_id = $1 and status = 'active') as patients,
-       (select count(*)::int from readings where user_id = $1) as readings`,
-    [userId],
+       (select count(*)::int from readings where user_id = $1) as readings,
+       -- Matched by address as well as id: an invitation can be sent to someone
+       -- who has no account yet, and is claimed on their first sign-in. Without
+       -- this a newly invited doctor sees no way to accept.
+       (select count(*)::int from shares
+         where status = 'pending' and (doctor_id = $1 or doctor_email = $2)) as pending`,
+    [userId, email],
   );
   return {
     patientCount: rows[0]?.patients ?? 0,
     readingCount: rows[0]?.readings ?? 0,
+    pendingInvitations: rows[0]?.pending ?? 0,
   };
 }
 

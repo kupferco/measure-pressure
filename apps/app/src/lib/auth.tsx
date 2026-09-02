@@ -14,6 +14,9 @@ interface AuthState {
    */
   patientCount: number;
   readingCount: number;
+  /** Invitations waiting to be accepted. Someone invited but not yet accepted has
+   *  no patients yet, and still needs somewhere to say yes. */
+  pendingInvitations: number;
   refresh(): Promise<void>;
   signIn(email: string, code: string): Promise<void>;
   signInWithToken(token: string): Promise<void>;
@@ -27,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [patientCount, setPatientCount] = useState(0);
   const [readingCount, setReadingCount] = useState(0);
+  const [pendingInvitations, setPendingInvitations] = useState(0);
 
   // A stored token may have expired while the app was closed, so it is not enough
   // to find one - we have to ask the server whether it still works.
@@ -34,11 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     api
       .me()
-      .then(({ user, patientCount, readingCount }) => {
+      .then(({ user, patientCount, readingCount, pendingInvitations }) => {
         if (cancelled) return;
         setUser(user);
         setPatientCount(patientCount);
         setReadingCount(readingCount);
+        setPendingInvitations(pendingInvitations);
       })
       .catch(async (err) => {
         if (err instanceof ApiError && err.isUnauthorized) await clearToken();
@@ -52,10 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    const { user, patientCount, readingCount } = await api.me();
+    const { user, patientCount, readingCount, pendingInvitations } = await api.me();
     setUser(user);
     setPatientCount(patientCount);
     setReadingCount(readingCount);
+    setPendingInvitations(pendingInvitations);
   }, []);
 
   const signIn = useCallback(
@@ -87,11 +93,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setPatientCount(0);
     setReadingCount(0);
+    setPendingInvitations(0);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, patientCount, readingCount, refresh, signIn, signInWithToken, signOut }),
-    [user, loading, patientCount, readingCount, refresh, signIn, signInWithToken, signOut],
+    () => ({
+      user,
+      loading,
+      patientCount,
+      readingCount,
+      pendingInvitations,
+      refresh,
+      signIn,
+      signInWithToken,
+      signOut,
+    }),
+    [user, loading, patientCount, readingCount, pendingInvitations, refresh, signIn, signInWithToken, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

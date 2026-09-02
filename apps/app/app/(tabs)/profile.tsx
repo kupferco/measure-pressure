@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, StyleSheet, TextInput, View } from 'react-native';
-import { Body, Button, Caption, Card, ErrorNote, Heading, Label, Screen } from '../src/components/ui';
-import { api } from '../src/lib/api';
-import { useAuth } from '../src/lib/auth';
-import { colors, radius, spacing, type } from '../src/lib/theme';
+import { Alert, Platform, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Body, Button, Caption, Card, ErrorNote, Heading, Label, Screen } from '../../src/components/ui';
+import { api } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth';
+import { colors, radius, spacing, type } from '../../src/lib/theme';
 
 /**
  * Profile and account.
@@ -17,6 +17,7 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   const [name, setName] = useState(user?.name ?? '');
+  const [startOnCamera, setStartOnCamera] = useState(user?.startOnCamera ?? true);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -27,13 +28,25 @@ export default function ProfileScreen() {
     setBusy(true);
     setError(null);
     try {
-      await api.updateName(name.trim());
+      await api.updateProfile({ name: name.trim() });
       await refresh();
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const setStartScreen = async (next: boolean) => {
+    // Optimistic: the switch should move under the thumb, not after a round trip.
+    setStartOnCamera(next);
+    try {
+      await api.updateProfile({ startOnCamera: next });
+      await refresh();
+    } catch (err) {
+      setStartOnCamera(!next);
+      setError(err instanceof Error ? err.message : 'Could not save that preference.');
     }
   };
 
@@ -78,6 +91,31 @@ export default function ProfileScreen() {
         />
         <Caption>Shown to anyone you share your readings with.</Caption>
         <Button label={saved ? 'Saved' : 'Save name'} onPress={saveName} loading={busy} disabled={saved} />
+      </View>
+
+      {/*
+        Opening straight on the camera suits the common case - open, shoot, done -
+        but someone reviewing more than recording wants the dashboard, so it is a
+        preference rather than an assumption.
+      */}
+      <View style={styles.toggleRow}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Body>Open on the camera</Body>
+          <Caption>
+            {Platform.OS === 'web'
+              ? 'In a browser the camera can only be opened by a tap, so the app always opens on Home - where the camera button is.'
+              : startOnCamera
+                ? 'The app opens ready to photograph your monitor.'
+                : 'The app opens on Home, with your chart.'}
+          </Caption>
+        </View>
+        <Switch
+          disabled={Platform.OS === 'web'}
+          value={startOnCamera}
+          onValueChange={setStartScreen}
+          accessibilityLabel="Open on the camera"
+          trackColor={{ true: colors.accent, false: colors.surfaceRaised }}
+        />
       </View>
 
       <ErrorNote message={error} />
@@ -136,6 +174,14 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
   input: {
     ...type.body,
     color: colors.text,

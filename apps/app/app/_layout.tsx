@@ -1,6 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/lib/auth';
 import { Loading } from '../src/components/ui';
@@ -11,9 +12,12 @@ import { colors } from '../src/lib/theme';
  * once they do. Everything else is reachable from the camera.
  */
 function AuthGate() {
-  const { user, loading, patientCount, readingCount } = useAuth();
+  const { user, loading, patientCount, readingCount, pendingInvitations } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  // The start-screen preference applies once per launch. Without this it would
+  // fire again on every navigation and make the app impossible to move around in.
+  const appliedStartScreen = useRef(false);
 
   useEffect(() => {
     if (loading) return;
@@ -25,14 +29,45 @@ function AuthGate() {
       router.replace('/sign-in');
       return;
     }
-    if (user && segments[0] === 'sign-in') {
-      // Where someone lands is decided by how they use the app, not by a role on
-      // their account. Patients shared with you and nothing of your own means you
-      // are here to read someone else's readings, so the camera is the wrong door.
-      const isVisitingDoctor = patientCount > 0 && readingCount === 0;
-      router.replace(isVisitingDoctor ? '/patients' : '/');
+    if (!user) return;
+
+    const justSignedIn = segments[0] === 'sign-in';
+    // The start-screen choice applies once per launch, and again the moment someone
+    // signs in. Without the guard it would re-fire on every navigation and make the
+    // app impossible to move around in.
+    if (!justSignedIn && appliedStartScreen.current) return;
+
+    // Inside the tab group the entry segment is "(tabs)"; at the very root it is
+    // undefined. Anything else - a link from an email, a specific patient - is a
+    // deliberate destination and is left alone.
+    const entry = segments[0];
+    const openedTheApp = entry === undefined || entry === '(tabs)';
+    if (!justSignedIn && !openedTheApp) return;
+
+    appliedStartScreen.current = true;
+
+    // Exactly one destination is chosen, always. An earlier version returned early
+    // on some branches and simply never navigated, which left anyone signing in on
+    // the web staring at a spinner: the sign-in screen waits to be replaced, and
+    // nothing replaced it.
+    const destination = pickDestination();
+    if (justSignedIn || destination !== '/') router.replace(destination);
+
+    function pickDestination(): '/' | '/capture' | '/patients' {
+      // Someone here to read other people's readings - or invited to - should not
+      // land on a camera. A pending invitation counts: they have no patients yet
+      // and still need somewhere to accept.
+      const isVisitingDoctor =
+        (patientCount > 0 || pendingInvitations > 0) && readingCount === 0;
+      if (isVisitingDoctor) return '/patients';
+
+      // Honour the camera preference only where it can be honoured. In a browser
+      // the camera opens only from a real tap, so a viewfinder route would be a
+      // dead screen; Home already puts the button under the thumb.
+      if (user!.startOnCamera && Platform.OS !== 'web') return '/capture';
+      return '/';
     }
-  }, [user, loading, patientCount, readingCount, segments, router]);
+  }, [user, loading, patientCount, readingCount, pendingInvitations, segments, router]);
 
   if (loading) return <Loading />;
 
@@ -46,17 +81,14 @@ function AuthGate() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      {/* The camera owns the whole screen, so it carries no header. */}
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="capture" options={{ headerShown: false }} />
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="verify" options={{ headerShown: false }} />
       <Stack.Screen name="confirm" options={{ title: 'Check the numbers' }} />
-      <Stack.Screen name="dashboard" options={{ title: 'Your readings' }} />
       <Stack.Screen name="insights" options={{ title: 'What affects you' }} />
       <Stack.Screen name="tags" options={{ title: 'Context tags' }} />
       <Stack.Screen name="sharing" options={{ title: 'Who can see my readings' }} />
-      <Stack.Screen name="patients" options={{ title: 'Patients' }} />
-      <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="patient/[id]" options={{ title: 'Readings' }} />
     </Stack>
   );

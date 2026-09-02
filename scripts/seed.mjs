@@ -12,6 +12,7 @@
  *   node scripts/seed.mjs --email you@example.com --yes
  *   node scripts/seed.mjs --email you@example.com --reset --yes
  */
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import pg from 'pg';
 import { SEED_TAGS } from '@mp/shared';
@@ -174,22 +175,36 @@ async function main() {
         else if (stressed && random() < 0.7) note = pick(NOTES.stress);
         else if (random() < 0.15) note = pick(NOTES.calm);
 
-        const { rows } = await client.query(
-          `insert into readings
-             (user_id, systolic, diastolic, pulse, measured_at, note, arm, posture, source)
-           values ($1, $2, $3, $4, $5, $6, 'left', 'sitting', 'manual')
-           returning id`,
-          [userId, systolic, diastolic, pulse, at.toISOString(), note],
-        );
+        // Most sittings are three measurements a minute apart, which is how blood
+        // pressure is supposed to be taken. The first runs high and settles - that
+        // is the whole reason the average is worth having.
+        const measurements = random() < 0.8 ? 3 : random() < 0.5 ? 2 : 1;
+        const sessionId = randomUUID();
 
-        const ids = tags.map(tagId).filter(Boolean);
-        if (ids.length > 0) {
-          await client.query(
-            `insert into reading_tags (reading_id, tag_id) select $1, unnest($2::uuid[])`,
-            [rows[0].id, ids],
+        for (let n = 0; n < measurements; n++) {
+          const at_n = new Date(at.getTime() + n * 60_000 + Math.floor(random() * 20_000));
+          const settling = n === 0 ? 0 : -Math.round(gaussian(4.5, 2));
+          const s_n = Math.min(200, Math.max(95, Math.round(gaussian(systolic + settling, 2.5))));
+          const d_n = Math.min(s_n - 25, Math.max(58, Math.round(gaussian(diastolic + settling * 0.6, 2))));
+
+          const { rows } = await client.query(
+            `insert into readings
+               (user_id, systolic, diastolic, pulse, measured_at, note, arm, posture, source, session_id)
+             values ($1, $2, $3, $4, $5, $6, 'left', 'sitting', 'manual', $7)
+             returning id`,
+            // The note belongs to the sitting, so it goes on the first reading only.
+            [userId, s_n, d_n, Math.round(gaussian(pulse, 2)), at_n.toISOString(), n === 0 ? note : null, sessionId],
           );
+
+          const ids = tags.map(tagId).filter(Boolean);
+          if (ids.length > 0) {
+            await client.query(
+              `insert into reading_tags (reading_id, tag_id) select $1, unnest($2::uuid[])`,
+              [rows[0].id, ids],
+            );
+          }
+          created++;
         }
-        created++;
       }
     }
 

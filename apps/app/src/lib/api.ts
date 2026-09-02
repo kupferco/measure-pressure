@@ -114,9 +114,15 @@ export const api = {
   /** The other half of the login email: the link, used by the web build. */
   verifyToken: (token: string) =>
     request<{ user: User; sessionToken: string }>('/auth/verify', { body: { token } }),
-  me: () => request<{ user: User; patientCount: number; readingCount: number }>('/auth/me'),
-  updateName: (name: string) =>
-    request<{ user: User }>('/auth/me', { method: 'PATCH', body: { name } }),
+  me: () =>
+    request<{
+      user: User;
+      patientCount: number;
+      readingCount: number;
+      pendingInvitations: number;
+    }>('/auth/me'),
+  updateProfile: (input: { name?: string; startOnCamera?: boolean }) =>
+    request<{ user: User }>('/auth/me', { method: 'PATCH', body: input }),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
 
   // tags
@@ -162,8 +168,8 @@ export const api = {
   // reports
   // patientId is how a doctor views someone else's history; patients omit it and
   // the API resolves the subject to the caller.
-  summary: (tz: string, patientId?: string) =>
-    request<{ summary: Summary }>(`/reports/summary?${reportQuery(tz, patientId)}`),
+  summary: (tz: string, patientId?: string, from?: string) =>
+    request<{ summary: Summary }>(`/reports/summary?${reportQuery(tz, patientId, from)}`),
   series: (tz: string, patientId?: string) =>
     request<{
       points: {
@@ -199,8 +205,9 @@ export const api = {
     }>('/patients'),
 };
 
-function reportQuery(tz: string, patientId?: string): string {
+function reportQuery(tz: string, patientId?: string, from?: string): string {
   const query = new URLSearchParams({ tz });
   if (patientId) query.set('patientId', patientId);
+  if (from) query.set('from', from);
   return query.toString();
 }

@@ -27,6 +27,8 @@ export const userSchema = z.object({
   id: uuidSchema,
   email: emailSchema,
   name: z.string().nullable(),
+  /** Which screen the app opens on. True is the camera. */
+  startOnCamera: z.boolean(),
   createdAt: isoDateTimeSchema,
 });
 export type User = z.infer<typeof userSchema>;
@@ -93,9 +95,20 @@ export type CreateReadingInput = z.infer<typeof createReadingSchema>;
 export const updateReadingSchema = readingCoreSchema.partial();
 export type UpdateReadingInput = z.infer<typeof updateReadingSchema>;
 
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  startOnCamera: z.boolean().optional(),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
 export const readingSchema = readingCoreSchema.extend({
   id: uuidSchema,
   userId: uuidSchema,
+  /**
+   * Readings taken in one sitting share this. Clients group by it to show "average
+   * of 3" rather than three separate entries a minute apart.
+   */
+  sessionId: uuidSchema,
   source: z.enum(READING_SOURCES),
   tags: z.array(z.object({ id: uuidSchema, label: z.string() })),
   imageUrl: z.string().nullable(),

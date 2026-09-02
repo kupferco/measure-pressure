@@ -1,6 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { emailSchema, requestMagicLinkSchema, verifyMagicLinkSchema } from '@mp/shared';
+import {
+  emailSchema,
+  requestMagicLinkSchema,
+  updateProfileSchema,
+  verifyMagicLinkSchema,
+} from '@mp/shared';
 import { ApiError } from '../../lib/errors.js';
 import { requireAuth, SESSION_COOKIE } from '../../lib/auth-plugin.js';
 import {
@@ -72,11 +77,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
    */
   app.get('/auth/me', { onRequest: [requireAuth] }, async (request) => {
     const user = request.requireUser();
-    return { user, ...(await describeUsage(user.id)) };
+    return { user, ...(await describeUsage(user.id, user.email)) };
   });
 
   app.patch('/auth/me', { onRequest: [requireAuth] }, async (request) => {
-    const { name } = z.object({ name: z.string().trim().min(1).max(120) }).parse(request.body);
-    return { user: await updateProfile(request.requireUser().id, name) };
+    const input = updateProfileSchema.parse(request.body);
+    return { user: await updateProfile(request.requireUser().id, input) };
   });
 };

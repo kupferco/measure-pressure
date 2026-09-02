@@ -9,6 +9,7 @@ import type {
   UpdateReadingInput,
   User,
 } from '@mp/shared';
+import { config } from '../../config.js';
 import { query, transaction } from '../../db/pool.js';
 import { ApiError } from '../../lib/errors.js';
 import { resolveSubject } from '../../lib/access.js';
@@ -27,13 +28,42 @@ interface ReadingRow {
   source: ReadingSource;
   ocr_confidence: number | null;
   ocr_corrected: boolean;
+  session_id: string;
   created_at: Date;
   image_object: string | null;
   tags: { id: string; label: string }[] | null;
 }
 
+const MAX_READINGS_PER_SESSION = 5;
+
+/**
+ * Finds the sitting a new reading belongs to.
+ *
+ * Looks for the nearest existing reading within the window, either side - people
+ * back-date the odd entry - and joins its session. Sessions are capped so that a
+ * long run of measurements cannot chain indefinitely into one average.
+ */
+async function findSessionFor(
+  client: PoolClient,
+  userId: string,
+  measuredAt: string,
+): Promise<string | null> {
+  const { rows } = await client.query<{ session_id: string }>(
+    `select r.session_id
+     from readings r
+     where r.user_id = $1
+       and r.measured_at between $2::timestamptz - make_interval(mins => $3)
+                             and $2::timestamptz + make_interval(mins => $3)
+       and (select count(*) from readings x where x.session_id = r.session_id) < $4
+     order by abs(extract(epoch from (r.measured_at - $2::timestamptz)))
+     limit 1`,
+    [userId, measuredAt, config.READING_SESSION_MINUTES, MAX_READINGS_PER_SESSION],
+  );
+  return rows[0]?.session_id ?? null;
+}
+
 const SELECT_READING = `
-  select r.id, r.user_id, r.systolic, r.diastolic, r.pulse, r.measured_at, r.note,
+  select r.id, r.user_id, r.systolic, r.diastolic, r.pulse, r.measured_at, r.note, r.session_id,
          r.arm, r.posture, r.source, r.ocr_confidence, r.ocr_corrected, r.created_at,
          s.image_object,
          coalesce(
@@ -49,6 +79,7 @@ async function toReading(row: ReadingRow): Promise<Reading> {
   return {
     id: row.id,
     userId: row.user_id,
+    sessionId: row.session_id,
     systolic: row.systolic,
     diastolic: row.diastolic,
     pulse: row.pulse,
@@ -156,11 +187,15 @@ export async function createReading(userId: string, input: CreateReadingInput): 
           (scan.parsed.pulse ?? null) !== (input.pulse ?? null));
     }
 
+    // Null lets the column default supply a fresh session for a lone reading.
+    const sessionId = await findSessionFor(client, userId, input.measuredAt);
+
     const { rows: inserted } = await client.query<{ id: string }>(
       `insert into readings
          (user_id, systolic, diastolic, pulse, measured_at, note, arm, posture,
-          source, scan_id, ocr_confidence, ocr_corrected)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          source, scan_id, ocr_confidence, ocr_corrected, session_id)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+               coalesce($13::uuid, gen_random_uuid()))
        returning id`,
       [
         userId,
@@ -175,6 +210,7 @@ export async function createReading(userId: string, input: CreateReadingInput): 
         input.scanId ?? null,
         ocrConfidence,
         ocrCorrected,
+        sessionId,
       ],
     );
     const id = inserted[0]!.id;

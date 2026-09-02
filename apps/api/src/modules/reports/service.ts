@@ -13,6 +13,7 @@ import { linearRegression, mean, welchTTest } from '../../lib/stats.js';
 
 interface ReportRow {
   id: string;
+  session_id: string;
   systolic: number;
   diastolic: number;
   pulse: number | null;
@@ -43,7 +44,7 @@ async function fetchReadings(actor: User, params: ReportQuery, action: string) {
   }
 
   const { rows } = await query<ReportRow>(
-    `select r.id, r.systolic, r.diastolic, r.pulse, r.measured_at,
+    `select r.id, r.session_id, r.systolic, r.diastolic, r.pulse, r.measured_at,
             array_remove(array_agg(t.id), null) as tag_ids,
             array_remove(array_agg(t.label), null) as tag_labels
      from readings r
@@ -54,8 +55,61 @@ async function fetchReadings(actor: User, params: ReportQuery, action: string) {
      order by r.measured_at`,
     values,
   );
-  return rows;
+  return collapseSessions(rows);
 }
+
+/**
+ * Collapses each sitting into a single averaged reading.
+ *
+ * Three measurements taken a minute apart describe one moment, not three. Left
+ * separate they would trible that moment's weight in every average, trend and
+ * comparison - so a day you measured carefully would count for more than a day you
+ * measured once, which is precisely backwards.
+ *
+ * The individual readings are untouched in the database and still shown in the
+ * history; this is only how the reports read them.
+ */
+function collapseSessions(rows: readonly ReportRow[]): ReportRow[] {
+  const sessions = new Map<string, ReportRow[]>();
+  for (const row of rows) {
+    const group = sessions.get(row.session_id) ?? [];
+    group.push(row);
+    sessions.set(row.session_id, group);
+  }
+
+  const collapsed = [...sessions.values()].map((group) => {
+    if (group.length === 1) return group[0]!;
+
+    const pulses = group.map((r) => r.pulse).filter((p): p is number => p !== null);
+    // Tags are unioned: if any reading of the sitting was tagged "slept badly",
+    // the sitting was.
+    const tagIds = new Map<string, string>();
+    for (const row of group) {
+      (row.tag_ids ?? []).forEach((id, i) => {
+        const label = row.tag_labels?.[i];
+        if (label) tagIds.set(id, label);
+      });
+    }
+
+    const first = group.reduce((a, b) => (a.measured_at <= b.measured_at ? a : b));
+    return {
+      id: first.id,
+      session_id: first.session_id,
+      // One decimal: an average of three whole numbers is rarely one itself, and
+      // 128.7 is honest where 129 quietly invents precision in the other direction.
+      systolic: round1(mean(group.map((r) => r.systolic))),
+      diastolic: round1(mean(group.map((r) => r.diastolic))),
+      pulse: pulses.length > 0 ? round1(mean(pulses)) : null,
+      measured_at: first.measured_at,
+      tag_ids: [...tagIds.keys()],
+      tag_labels: [...tagIds.values()],
+    } satisfies ReportRow;
+  });
+
+  return collapsed.sort((a, b) => a.measured_at.getTime() - b.measured_at.getTime());
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /** Local hour of a reading in the viewer's zone; falls back to UTC on a bad zone. */
 function localHour(date: Date, timeZone: string): number {
@@ -77,8 +131,6 @@ function bucketFor(hour: number): TimeBucket {
   if (hour >= 18 && hour < 22) return 'evening';
   return 'night';
 }
-
-const round1 = (n: number) => Math.round(n * 10) / 10;
 
 export async function buildSummary(actor: User, params: ReportQuery): Promise<Summary> {
   const rows = await fetchReadings(actor, params, 'view_summary');
