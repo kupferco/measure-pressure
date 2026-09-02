@@ -16,7 +16,8 @@ add context, and over time see what actually moves the readings. Expected users:
 | 9 | Clinician app | **A separate Vite/React app in `apps/doctor`** | The doctor's screen is a table, and tables are what React Native Web is worst at. Different audience, different device, different job - so a different client, sharing the API and the domain rules. |
 | 3 | OCR | **Google Cloud Vision** | Stays inside GCP. Compensated for with layout-aware parsing and a mandatory confirm screen (see below). |
 | 4 | Backend | **Fastify + Postgres** | One container on Cloud Run, serving the API *and* the web build. One service, one URL, no CORS. |
-| 5 | Database | **One Cloud SQL Postgres database for local, staging and prod** | Already paid for, and one thing to manage rather than three. |
+| 5 | Database | **One Neon Postgres project** | Isolated from the Cloud SQL instance running other work, so nothing here can affect it. Free tier is permanent and this app uses a small fraction of it. |
+| 10 | Cloud project | **Its own GCP project, not the shared one** | Sharing saves nothing - Cloud Run and Vision bill per usage, not per project - and a separate project means its own IAM, its own Hosting free tier, and one action to delete everything. |
 | 7 | Schema | **Declarative, managed by [Atlas](https://atlasgo.io)** | `db/schema/` declares the shape the database should have. Atlas diffs it against the live database and works out the changes. No versioned migrations, no change scripts. |
 | 6 | Context capture | **Free-text note (primary) + editable per-user tags (secondary, collapsed by default)** | The note is what you actually want to write and can be analysed by an LLM later. Tags are structured, so they can be averaged - which is what makes the "what affects my pressure" report arithmetic rather than vibes. |
 
@@ -128,19 +129,23 @@ Secondary to capture, but the reason the app exists.
 
 | Env | Runs where | Database |
 |---|---|---|
-| local | laptop | the shared Cloud SQL database |
-| staging | Cloud Run | the shared Cloud SQL database |
-| prod | Cloud Run | the shared Cloud SQL database |
+| local | laptop | the Neon database |
+| staging | Cloud Run | the Neon database |
+| prod | Cloud Run | the Neon database |
 
-One database behind all three, deliberately: fewer moving parts to manage, and at
-this size there is no meaningful staging traffic to isolate. `docker compose up db`
-gives a throwaway local Postgres for trying a schema change out first, which is
-worth doing before pointing `db:apply` at the real one.
+One database behind all three. `docker compose up db` gives a throwaway local
+Postgres for trying a schema change out first, which is worth doing before pointing
+`db:apply` at the real one.
+
+The one limit worth watching is Neon's 0.5 GB. Readings are tiny; the thing that
+grows is `scans.vision_raw`, the full Cloud Vision response kept so the parser can
+be improved against real photographs. Those are dropped after 90 days, which bounds
+it - the parsed result and the photo itself are kept.
 
 **What this costs, so it is written down somewhere.** There is no environment where
-a mistake is harmless. Two guards exist because of that: `db:apply` prints the
-target database and asks for confirmation before doing anything, and the schema file
-is additive-only by construction. Neither protects against `delete from readings`.
+a mistake is harmless. `db:apply` prints the target and asks before doing anything,
+and destructive changes need explicit approval. Neither protects against
+`delete from readings`.
 
 ### Changing the schema
 
@@ -201,27 +206,39 @@ no CORS between them.
 
 ## Deployment
 
-One Cloud Run service per environment. Each container holds the API and the Expo
-web export together, and Fastify serves the static files with a fallback to
-`index.html` so the router's deep links survive a refresh.
+Two deployables, on purpose.
 
-That is one service rather than two on purpose. A separate static host would mean a
-second deploy pipeline, a second URL, and CORS between them - all for a web app with
-one user who is not on a phone. Serving them together makes the web build's API
-calls same-origin, which is also why it needs no configured API URL at all.
+| | Where | Why |
+|---|---|---|
+| API | Cloud Run, scale-to-zero | Idle costs nothing |
+| Patient app + clinician app | Firebase Hosting, one site | Static files off a CDN, free tier, instant rollback |
 
-The native app is the exception: it has no origin to be same as, so
-`EXPO_PUBLIC_API_URL` must point at the Cloud Run URL when building with EAS.
+Firebase Hosting rewrites `/api/**` to the Cloud Run service. That is the load
+bearing detail: the browser sees a single origin, so the session cookie set by the
+API is sent by both apps, and there is no CORS anywhere in production.
+
+```
+https://measure-pressure.web.app/          patient app
+https://measure-pressure.web.app/doctor    clinician app
+https://measure-pressure.web.app/api/*  →  Cloud Run
+```
+
+The API image contains no client code. An earlier version served the web build
+from the same container, which worked but meant every UI change rebuilt and
+redeployed a Node image to change a CSS file.
 
 | | Where | Notes |
 |---|---|---|
 | Image | Artifact Registry | Built by Cloud Build, not locally - Cloud Run is amd64, the laptop is not |
 | Secrets | Secret Manager | `DATABASE_URL`, `RESEND_API_KEY`; never in the image |
 | Photos | Cloud Storage, private | Signed URLs expiring after an hour; these are medical images |
-| Scaling | 0 to 2 instances | Scales to zero, so an idle environment costs nothing |
+| Database | Neon, over TLS | Deliberately not the Cloud SQL instance the other projects use |
 
 Deploying never touches the database. Schema changes are applied separately and
 deliberately, with `npm run db:plan` then `npm run db:apply`.
+
+The hosting rules - routing, clean URLs, cache and security headers - can be
+checked before any deploy with `firebase emulators:start --only hosting`.
 
 ## Repository layout
 

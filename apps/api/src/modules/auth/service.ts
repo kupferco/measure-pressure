@@ -289,4 +289,14 @@ export async function describeUsage(
 export async function purgeExpired(): Promise<void> {
   await query('delete from sessions where expires_at < now()');
   await query(`delete from magic_links where expires_at < now() - interval '7 days'`);
+
+  // Raw Cloud Vision responses are kept so the parser can be improved against real
+  // photographs, but they are by far the largest thing in this database - tens of
+  // kilobytes each against a few dozen bytes for a reading. Three months is long
+  // enough to investigate a bad scan; after that the parsed result is what matters,
+  // and it stays. The reading and its photo are untouched either way.
+  await query(
+    `update scans set vision_raw = null
+     where vision_raw is not null and created_at < now() - interval '90 days'`,
+  );
 }

@@ -27,6 +27,10 @@
     "db:inspect": "node scripts/atlas.mjs schema inspect --env app --format \"{{ sql . }}\"",
     "seed": "node scripts/seed.mjs",
     "dev:doctor": "npm run build:shared && npm run dev --workspace=@mp/doctor",
-    "build:doctor": "npm run build:shared && npm run build --workspace=@mp/doctor"
+    "build:doctor": "npm run build:shared && npm run build --workspace=@mp/doctor",
+    "build:hosting": "node scripts/build-hosting.mjs",
+    "deploy:hosting": "npm run build:hosting && firebase deploy --only hosting",
+    "deploy:api:staging": "./deploy/deploy.sh staging",
+    "deploy:api:prod": "./deploy/deploy.sh prod"
   }
 }

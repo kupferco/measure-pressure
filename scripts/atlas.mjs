@@ -19,6 +19,24 @@ if (existsSync('.env')) {
   }
 }
 
+/*
+ * Schema changes go over the DIRECT connection, never the pooled one.
+ *
+ * Neon's pooled endpoint runs PgBouncer in transaction mode, which disallows the
+ * SET statements migration tooling relies on. The application wants the pooler;
+ * DDL must not have it.
+ *
+ * The direct host is the pooled host without "-pooler", so it can be derived
+ * rather than configured - one less string to copy and one less way to get the
+ * two the wrong way round.
+ */
+if (process.env.DIRECT_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.DIRECT_DATABASE_URL;
+} else if (process.env.DATABASE_URL?.includes('-pooler.')) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL.replace('-pooler.', '.');
+  console.log('Using the direct (unpooled) endpoint for schema changes.');
+}
+
 if (!process.env.DATABASE_URL) {
   console.error(
     '\nDATABASE_URL is not set.\n' +

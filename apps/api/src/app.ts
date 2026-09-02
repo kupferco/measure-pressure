@@ -74,9 +74,18 @@ export async function buildApp(): Promise<FastifyInstance> {
       .send({ error: 'internal_error', message: 'Something went wrong on our side.' });
   });
 
-  // Cloud Run's health check. Deliberately does not touch the database: a brief
-  // Cloud SQL blip should not cause the instance to be torn down and replaced.
-  app.get('/healthz', async () => ({ ok: true, env: config.APP_ENV }));
+  /*
+   * Liveness. Deliberately does not touch the database: a brief blip there should
+   * not cause the instance to be torn down and replaced.
+   *
+   * Not /healthz - Google's frontend intercepts that path on run.app domains and
+   * answers its own 404, so the request never reaches the container. Everything
+   * else gets through; that one name does not.
+   */
+  const health = async () => ({ ok: true, env: config.APP_ENV });
+  app.get('/health', health);
+  // Also under /api, which is the only prefix Firebase Hosting forwards.
+  app.get('/api/health', health);
 
   await app.register(
     async (api) => {
