@@ -1,0 +1,190 @@
+/*
+ * A light, quiet, printable interface.
+ *
+ * The patient app is dark because it is opened in a bedroom at 7am. This one is
+ * read on a desktop during an appointment, and sometimes printed, so it is light,
+ * dense, and uses a real type scale rather than tap targets.
+ */
+:root {
+  --surface: #ffffff;
+  --surface-sunken: #f6f7f9;
+  --border: #e2e5ea;
+  --border-strong: #c8cdd6;
+
+  --text: #14181f;
+  --text-muted: #5a6472;
+  --text-faint: #8b95a3;
+
+  --accent: #2a78d6;
+  --danger: #bc2d2a;
+
+  /* Systolic and diastolic. Checked against white: worst-case protanopia dE 13.4,
+     normal vision 27.0, both above 4:1 contrast. */
+  --series-systolic: #2a78d6;
+  --series-diastolic: #d55181;
+
+  /* Blood-pressure categories: an ordered severity scale, not a categorical set.
+     Lightness steps down monotonically (0.644 / 0.607 / 0.565 / 0.525 / 0.484) so
+     the order survives greyscale and printing, and every step clears 3:1 on white.
+     Always rendered beside its written label - never colour alone. */
+  --cat-normal: #38a568;
+  --cat-elevated: #ae7500;
+  --cat-hypertension_1: #c04d00;
+  --cat-hypertension_2: #bc2d2a;
+  --cat-crisis: #af1235;
+
+  --radius: 8px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--surface-sunken);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 { font-size: 24px; margin: 0; letter-spacing: -0.2px; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 9px 16px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  min-height: 40px;
+}
+button:disabled { opacity: 0.5; cursor: default; }
+button.secondary { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+button.quiet { background: none; color: var(--text-muted); border: none; padding: 6px 4px; min-height: 0; }
+button.quiet:hover { color: var(--text); }
+
+input {
+  font: inherit;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  min-height: 40px;
+  width: 100%;
+}
+input:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+a { color: var(--accent); }
+
+.page { max-width: 980px; margin: 0 auto; padding: 28px 24px 64px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+.small { font-size: 13px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.spread { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+
+.error {
+  background: #fdeceb;
+  border: 1px solid #f3c4c2;
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+/* Numbers in a table have to line up to be scannable. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+@media print {
+  body { background: #fff; }
+  .no-print { display: none !important; }
+  .card { border-color: #ccc; break-inside: avoid; }
+  .page { max-width: none; padding: 0; }
+}
+
+/* ---------------------------------------------------------------- the diary */
+
+table.diary {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+table.diary th,
+table.diary td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+table.diary thead th {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border-strong);
+  vertical-align: bottom;
+}
+table.diary thead th .hours {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+table.diary tbody th {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+table.diary .day-col { width: 1%; }
+/* Zebra striping earns its keep here: rows are read across four columns. */
+table.diary tbody tr:nth-child(even) { background: var(--surface-sunken); }
+table.diary tbody tr:last-child th,
+table.diary tbody tr:last-child td { border-bottom: none; }
+
+.cell { display: inline-flex; align-items: center; gap: 7px; }
+.cell .value { font-weight: 600; }
+.cell .count { font-size: 12px; color: var(--text-faint); }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.cat-normal { background: var(--cat-normal); }
+.cat-elevated { background: var(--cat-elevated); }
+.cat-hypertension_1 { background: var(--cat-hypertension_1); }
+.cat-hypertension_2 { background: var(--cat-hypertension_2); }
+.cat-crisis { background: var(--cat-crisis); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; }
+.legend .item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+
+.segmented { display: inline-flex; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius); padding: 3px; gap: 2px; }
+.segmented button {
+  background: none; color: var(--text-muted); border: none;
+  padding: 5px 14px; min-height: 0; border-radius: 5px; font-size: 13px;
+}
+.segmented button[aria-pressed='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }

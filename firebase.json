@@ -1,0 +1,84 @@
+{
+  "hosting": {
+    "site": "measure-pressure-app",
+    "public": "dist",
+    "ignore": [
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "rewrites": [
+      {
+        "comment": "The API. Rewritten rather than called cross-origin, so the browser sees one origin and the session cookie works with no CORS involved.",
+        "source": "/api/**",
+        "run": {
+          "serviceId": "measure-pressure-api",
+          "region": "us-central1"
+        }
+      },
+      {
+        "comment": "The clinician app routes on the client; any /doctor path without a file falls back to its own index.",
+        "source": "/doctor/**",
+        "destination": "/doctor/index.html"
+      },
+      {
+        "comment": "Everything else belongs to the patient app.",
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "comment": "Applies to every path, including '/' and the clean URLs, which a *.html glob would miss because these rules match the request path rather than the file served. Medical pages, so keep them out of caches and referrers.",
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      },
+      {
+        "comment": "Listed after the catch-all so it wins: fingerprinted bundles never change under the same name, so they can be cached forever.",
+        "source": "**/@(assets|_expo)/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "comment": "Listed last so it wins over the catch-all: API responses carry medical data and must not be written to any cache, not merely revalidated.",
+        "source": "/api/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "private, no-store"
+          }
+        ]
+      }
+    ]
+  },
+  "emulators": {
+    "hosting": {
+      "port": 5010
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}
