@@ -5,7 +5,16 @@ import { config } from '../config.js';
 import { resolveSession } from '../modules/auth/service.js';
 import { ApiError } from './errors.js';
 
-export const SESSION_COOKIE = 'mp_session';
+/*
+ * The name is not a preference: Firebase Hosting strips every cookie except one
+ * called __session from requests it forwards to Cloud Run, so that the CDN can
+ * cache safely. Any other name is silently dropped, and the API sees an
+ * unauthenticated request no matter how correctly the browser stored it.
+ *
+ * The patient app never noticed because it authenticates with a bearer token; the
+ * clinician app is cookie-only and could not stay signed in at all.
+ */
+export const SESSION_COOKIE = '__session';
 
 declare module 'fastify' {
   interface FastifyRequest {

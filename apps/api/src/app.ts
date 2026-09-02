@@ -48,6 +48,20 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(rateLimit, { global: false, max: 300, timeWindow: '1 minute' });
   await app.register(authPlugin);
 
+  /*
+   * Nothing under /api may be cached.
+   *
+   * Firebase Hosting puts the __session cookie in its CDN cache key, so a cached
+   * response can only be reused for the same session - but "same session" is not
+   * a guarantee worth relying on for medical data. Saying no-store removes the
+   * question entirely.
+   */
+  app.addHook('onSend', async (request, reply) => {
+    if (request.url.startsWith('/api/')) {
+      reply.header('Cache-Control', 'private, no-store');
+    }
+  });
+
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
       return reply.code(400).send({

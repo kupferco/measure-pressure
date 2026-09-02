@@ -59,6 +59,16 @@
             "value": "public, max-age=31536000, immutable"
           }
         ]
+      },
+      {
+        "comment": "Listed last so it wins over the catch-all: API responses carry medical data and must not be written to any cache, not merely revalidated.",
+        "source": "/api/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "private, no-store"
+          }
+        ]
       }
     ]
   },
