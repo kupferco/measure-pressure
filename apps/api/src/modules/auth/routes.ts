@@ -3,7 +3,14 @@ import { z } from 'zod';
 import { emailSchema, requestMagicLinkSchema, verifyMagicLinkSchema } from '@mp/shared';
 import { ApiError } from '../../lib/errors.js';
 import { requireAuth, SESSION_COOKIE } from '../../lib/auth-plugin.js';
-import { logout, requestLogin, updateProfile, verifyCode, verifyLinkToken } from './service.js';
+import {
+  describeUsage,
+  logout,
+  requestLogin,
+  updateProfile,
+  verifyCode,
+  verifyLinkToken,
+} from './service.js';
 
 const verifySchema = z.union([
   verifyMagicLinkSchema,
@@ -59,9 +66,14 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ ok: true });
   });
 
-  app.get('/auth/me', { onRequest: [requireAuth] }, async (request) => ({
-    user: request.requireUser(),
-  }));
+  /**
+   * The session, plus how this person uses the app. The counts are what let the
+   * client choose a home screen without a second round trip on every launch.
+   */
+  app.get('/auth/me', { onRequest: [requireAuth] }, async (request) => {
+    const user = request.requireUser();
+    return { user, ...(await describeUsage(user.id)) };
+  });
 
   app.patch('/auth/me', { onRequest: [requireAuth] }, async (request) => {
     const { name } = z.object({ name: z.string().trim().min(1).max(120) }).parse(request.body);

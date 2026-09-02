@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { colors, radius, seriesColors, spacing, type } from '../lib/theme';
 
 export interface ChartPoint {
@@ -93,6 +93,22 @@ export function BpChart({ points, width }: { points: ChartPoint[]; width: number
 
   return (
     <View>
+      {/*
+        The touch handling lives on this View rather than on a <Rect> inside the
+        SVG. react-native-svg forwards unknown props to the underlying DOM node on
+        web, so responder props on an SVG element become "Unknown event handler
+        property" errors in the console. A View is what react-native-web knows how
+        to translate - and handling the move event as well turns tap-to-read into
+        drag-to-scrub along the line.
+      */}
+      <View
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={(event) => handleTouch(event.nativeEvent.locationX)}
+        onResponderMove={(event) => handleTouch(event.nativeEvent.locationX)}
+        onResponderRelease={() => setSelected(null)}
+        onResponderTerminate={() => setSelected(null)}
+      >
       <Svg width={width} height={HEIGHT}>
         {gridValues.map((value) => (
           <G key={value}>
@@ -176,15 +192,8 @@ export function BpChart({ points, width }: { points: ChartPoint[]; width: number
           </G>
         ) : null}
 
-        <Rect
-          x={PADDING.left}
-          y={PADDING.top}
-          width={plotWidth}
-          height={plotHeight}
-          fill="transparent"
-          onPressIn={(event) => handleTouch(event.nativeEvent.locationX)}
-        />
       </Svg>
+      </View>
 
       <View style={styles.legend}>
         <LegendItem color={seriesColors.systolic} label="Systolic" />

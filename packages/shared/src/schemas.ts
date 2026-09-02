@@ -2,20 +2,19 @@ import { z } from 'zod';
 import { PLAUSIBLE } from './bp.js';
 import { ARMS, POSTURES, TAG_GROUPS } from './tags.js';
 
-export const USER_ROLES = ['patient', 'doctor'] as const;
-export type UserRole = (typeof USER_ROLES)[number];
-
 export const emailSchema = z.string().trim().toLowerCase().email().max(320);
 export const uuidSchema = z.string().uuid();
 export const isoDateTimeSchema = z.string().datetime({ offset: true });
 
 // ---------------------------------------------------------------- auth
 
+/**
+ * Signing in needs nothing but an address. A name is profile information - asking
+ * for it at the door invites the same person to be "Daniel Kupfer" one week and
+ * "Dani" the next, when the account was only ever keyed by email anyway.
+ */
 export const requestMagicLinkSchema = z.object({
   email: emailSchema,
-  /** Only used when the address has never been seen before. */
-  name: z.string().trim().min(1).max(120).optional(),
-  role: z.enum(USER_ROLES).optional(),
 });
 export type RequestMagicLinkInput = z.infer<typeof requestMagicLinkSchema>;
 
@@ -28,7 +27,6 @@ export const userSchema = z.object({
   id: uuidSchema,
   email: emailSchema,
   name: z.string().nullable(),
-  role: z.enum(USER_ROLES),
   createdAt: isoDateTimeSchema,
 });
 export type User = z.infer<typeof userSchema>;

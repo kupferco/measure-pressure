@@ -249,6 +249,22 @@ export async function deleteReading(userId: string, readingId: string): Promise<
   if (rowCount === 0) throw ApiError.notFound('Reading not found.');
 }
 
+/**
+ * Deletes every reading this person has, and the scans behind them.
+ *
+ * Offered because the first thing anyone does with a tracker is put test data in
+ * it, and the second is want it gone before they start recording for real. Tags,
+ * the account and any sharing survive - this is "start again", not "close account".
+ */
+export async function deleteAllReadings(userId: string): Promise<{ deleted: number }> {
+  return transaction(async (client) => {
+    const { rowCount } = await client.query('delete from readings where user_id = $1', [userId]);
+    // Scans are kept only for the readings they produced; orphans are just photos.
+    await client.query('delete from scans where user_id = $1', [userId]);
+    return { deleted: rowCount ?? 0 };
+  });
+}
+
 export async function getReading(actor: User, readingId: string): Promise<Reading> {
   const { rows } = await query<ReadingRow>(`${SELECT_READING} where r.id = $1`, [readingId]);
   const row = rows[0];

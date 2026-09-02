@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg';
-import { SEED_TAGS, type UserRole, type User } from '@mp/shared';
+import { SEED_TAGS, type User } from '@mp/shared';
 import { config } from '../../config.js';
 import { query, transaction } from '../../db/pool.js';
 import { ApiError } from '../../lib/errors.js';
@@ -14,7 +14,6 @@ interface UserRow {
   id: string;
   email: string;
   name: string | null;
-  role: UserRole;
   created_at: Date;
 }
 
@@ -23,7 +22,6 @@ export function toUser(row: UserRow): User {
     id: row.id,
     email: row.email,
     name: row.name,
-    role: row.role,
     createdAt: row.created_at.toISOString(),
   };
 }
@@ -56,19 +54,18 @@ async function seedTags(client: PoolClient, userId: string): Promise<void> {
 async function findOrCreateUser(
   client: PoolClient,
   email: string,
-  name: string | undefined,
-  role: UserRole | undefined,
 ): Promise<{ user: UserRow; isNew: boolean }> {
   const existing = await client.query<UserRow>(
-    'select id, email, name, role, created_at from users where email = $1',
+    'select id, email, name, created_at from users where email = $1',
     [email],
   );
   if (existing.rows[0]) return { user: existing.rows[0], isNew: false };
 
+  // The name is set later, from the profile screen. An account is its email.
   const created = await client.query<UserRow>(
-    `insert into users (email, name, role) values ($1, $2, $3)
-     returning id, email, name, role, created_at`,
-    [email, name ?? null, role ?? 'patient'],
+    `insert into users (email) values ($1)
+     returning id, email, name, created_at`,
+    [email],
   );
   const user = created.rows[0]!;
 
@@ -84,14 +81,9 @@ async function findOrCreateUser(
   return { user, isNew: true };
 }
 
-export async function requestLogin(input: {
-  email: string;
-  name?: string;
-  role?: UserRole;
-  ip?: string;
-}): Promise<void> {
+export async function requestLogin(input: { email: string; ip?: string }): Promise<void> {
   const { token, code, isNew, email } = await transaction(async (client) => {
-    const { user, isNew } = await findOrCreateUser(client, input.email, input.name, input.role);
+    const { user, isNew } = await findOrCreateUser(client, input.email);
 
     const recent = await client.query<{ count: number }>(
       `select count(*)::int as count from magic_links
@@ -206,7 +198,7 @@ async function finishLogin(
 ): Promise<{ user: User; sessionToken: string }> {
   const sessionToken = await createSession(client, userId, userAgent);
   const userRow = await client.query<UserRow>(
-    'select id, email, name, role, created_at from users where id = $1',
+    'select id, email, name, created_at from users where id = $1',
     [userId],
   );
   return { user: toUser(userRow.rows[0]!), sessionToken };
@@ -224,7 +216,7 @@ export async function resolveSession(sessionToken: string): Promise<User | null>
        where token_hash = $1 and expires_at > now()
        returning user_id
      )
-     select u.id, u.email, u.name, u.role, u.created_at
+     select u.id, u.email, u.name, u.created_at
      from touched join users u on u.id = touched.user_id`,
     [hashToken(sessionToken), config.SESSION_TTL_DAYS],
   );
@@ -238,11 +230,34 @@ export async function logout(sessionToken: string): Promise<void> {
 
 export async function updateProfile(userId: string, name: string): Promise<User> {
   const { rows } = await query<UserRow>(
-    'update users set name = $2 where id = $1 returning id, email, name, role, created_at',
+    'update users set name = $2 where id = $1 returning id, email, name, created_at',
     [userId, name],
   );
   if (!rows[0]) throw ApiError.notFound('User not found');
   return toUser(rows[0]);
+}
+
+/**
+ * How this person uses the app, which is what decides where they land.
+ *
+ * Derived rather than declared: someone with patients sharing with them is acting
+ * as a doctor, someone with their own readings is tracking their own pressure, and
+ * plenty of people will be both.
+ */
+export async function describeUsage(
+  userId: string,
+): Promise<{ patientCount: number; readingCount: number }> {
+  const { rows } = await query<{ patients: number; readings: number }>(
+    `select
+       (select count(*)::int from shares
+         where doctor_id = $1 and status = 'active') as patients,
+       (select count(*)::int from readings where user_id = $1) as readings`,
+    [userId],
+  );
+  return {
+    patientCount: rows[0]?.patients ?? 0,
+    readingCount: rows[0]?.readings ?? 0,
+  };
 }
 
 /** Housekeeping - safe to call on a schedule or at boot. */

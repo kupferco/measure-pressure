@@ -11,7 +11,8 @@ add context, and over time see what actually moves the readings. Expected users:
 | # | Decision | Chosen | Why |
 |---|---|---|---|
 | 1 | Client | **Expo (React Native) - one codebase, iOS native + web build** | One codebase covers three ways of using it: Expo Go today, a real native build later, and the web build. The doctor always gets the web version. |
-| 2 | Auth | **Email magic link** | No passwords to store, hash, reset or leak - which matters for health data. Works for anyone with any email, unlike Google Sign-In. |
+| 2 | Auth | **Email magic link, email only** | No passwords to store, hash, reset or leak - which matters for health data. An account is an email address; a name is profile information set later, so the same person cannot arrive under three spellings. |
+| 8 | Doctor access | **Derived from sharing, not a role on the account** | Nobody is flagged a doctor. You can read someone's readings because they shared them with you, and the home screen follows from that - so one person can track their own pressure and read their patients'. |
 | 3 | OCR | **Google Cloud Vision** | Stays inside GCP. Compensated for with layout-aware parsing and a mandatory confirm screen (see below). |
 | 4 | Backend | **Fastify + Postgres** | One container on Cloud Run, serving the API *and* the web build. One service, one URL, no CORS. |
 | 5 | Database | **One Cloud SQL Postgres database for local, staging and prod** | Already paid for, and one thing to manage rather than three. |
@@ -76,14 +77,15 @@ OCR proposed, `readings.ocr_corrected` records it - a free, honest accuracy metr
 
 Declared across [`db/schema/`](../db/schema/), by area.
 
-- `users` - patient or doctor, identified by email
+- `users` - an email address and an optional name. Deliberately no role column
 - `magic_links`, `sessions` - passwordless auth; only **hashes** of tokens are
   stored, so a database leak does not yield working credentials
 - `scans` - one row per photo, kept even if the user abandons the confirm screen
 - `readings` - the numbers, timestamp, note, arm, posture, provenance
 - `tags` + `reading_tags` - per-user, editable, **archived rather than deleted** so a
   reading tagged years ago keeps its meaning after a rename
-- `shares` - doctor access, invited by email so the doctor need not exist yet
+- `shares` - doctor access, invited by email so the doctor need not exist yet. An
+  active row here is the *only* thing that makes someone a doctor
 - `access_log` - every time one person reads another's readings
 
 ---

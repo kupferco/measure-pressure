@@ -86,7 +86,7 @@ async function main() {
     await client.query('begin');
 
     const { rows: userRows } = await client.query(
-      `insert into users (email, name, role) values ($1, $2, 'patient')
+      `insert into users (email, name) values ($1, $2)
        on conflict (email) do update set email = excluded.email
        returning id`,
       [email, value('name') ?? 'Daniel'],

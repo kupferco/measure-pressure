@@ -138,60 +138,14 @@ export default function SharingScreen() {
         </View>
       ) : null}
 
-      {shares.received.some((share) => share.status === 'pending') ? (
-        <View style={{ gap: spacing.sm }}>
-          <Label>Invitations for you</Label>
-          {shares.received
-            .filter((share) => share.status === 'pending')
-            .map((share) => (
-              <Card key={share.id}>
-                <Body>{share.patient.name ?? share.patient.email}</Body>
-                <Caption>wants to share their blood pressure readings with you</Caption>
-                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                  <Button label="Accept" onPress={() => respond(share.id, true)} style={{ flex: 1 }} />
-                  <Button
-                    label="Decline"
-                    variant="secondary"
-                    onPress={() => respond(share.id, false)}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              </Card>
-            ))}
-        </View>
+      {patients.length > 0 ? (
+        <Button
+          label={`You can see ${patients.length} ${patients.length === 1 ? 'person' : 'people'}’s readings →`}
+          variant="secondary"
+          onPress={() => router.push('/patients')}
+        />
       ) : null}
 
-      {patients.length > 0 ? (
-        <View style={{ gap: spacing.sm }}>
-          <Label>People sharing with you</Label>
-          {patients.map((patient) => (
-            <Pressable
-              key={patient.id}
-              accessibilityRole="button"
-              accessibilityLabel={`View readings for ${patient.name ?? patient.email}`}
-              onPress={() =>
-                router.push({
-                  pathname: '/patient/[id]',
-                  params: { id: patient.id, name: patient.name ?? patient.email },
-                })
-              }
-            >
-              <Card>
-                <Body>{patient.name ?? patient.email} →</Body>
-                <Caption>
-                  {patient.readingCount} readings
-                  {patient.lastReading
-                    ? ` · last ${patient.lastReading.systolic}/${patient.lastReading.diastolic}`
-                    : ''}
-                  {patient.lastMeasuredAt
-                    ? ` · ${new Date(patient.lastMeasuredAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
-                    : ''}
-                </Caption>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
     </Screen>
   );
 }

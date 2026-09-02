@@ -14,7 +14,7 @@ const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { patientCount } = useAuth();
   const { width } = useWindowDimensions();
 
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -168,8 +168,10 @@ export default function DashboardScreen() {
         <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
           <Button label="Take a reading" onPress={() => router.replace('/')} />
           <Button label="Share with your doctor" variant="secondary" onPress={() => router.push('/sharing')} />
-          <Button label="Edit tags" variant="ghost" onPress={() => router.push('/tags')} />
-          <Button label="Sign out" variant="danger" onPress={signOut} />
+          {patientCount > 0 ? (
+            <Button label="Patients sharing with me" variant="secondary" onPress={() => router.push('/patients')} />
+          ) : null}
+          <Button label="Profile & settings" variant="ghost" onPress={() => router.push('/profile')} />
         </View>
       </ScrollView>
     </SafeAreaView>

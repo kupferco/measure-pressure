@@ -108,14 +108,15 @@ async function request<T>(
 
 export const api = {
   // auth
-  requestLogin: (email: string, name?: string) =>
-    request<{ sent: true }>('/auth/request', { body: { email, ...(name ? { name } : {}) } }),
+  requestLogin: (email: string) => request<{ sent: true }>('/auth/request', { body: { email } }),
   verifyCode: (email: string, code: string) =>
     request<{ user: User; sessionToken: string }>('/auth/verify', { body: { email, code } }),
   /** The other half of the login email: the link, used by the web build. */
   verifyToken: (token: string) =>
     request<{ user: User; sessionToken: string }>('/auth/verify', { body: { token } }),
-  me: () => request<{ user: User }>('/auth/me'),
+  me: () => request<{ user: User; patientCount: number; readingCount: number }>('/auth/me'),
+  updateName: (name: string) =>
+    request<{ user: User }>('/auth/me', { method: 'PATCH', body: { name } }),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
 
   // tags
@@ -135,6 +136,8 @@ export const api = {
   createReading: (input: CreateReadingInput) =>
     request<{ reading: Reading }>('/readings', { body: input }),
   deleteReading: (id: string) => request<void>(`/readings/${id}`, { method: 'DELETE' }),
+  deleteAllReadings: (confirmEmail: string) =>
+    request<{ deleted: number }>('/readings', { method: 'DELETE', body: { confirmEmail } }),
 
   // the capture flow
   scan: (uri: string) => {

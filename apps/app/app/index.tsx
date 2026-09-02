@@ -176,10 +176,15 @@ const styles = StyleSheet.create({
   hint: {
     ...type.caption,
     color: '#fff',
-    // A plain shadow keeps the hint readable over both a dark monitor and a bright wall.
-    textShadowColor: 'rgba(0,0,0,0.9)',
-    textShadowRadius: 6,
     flexShrink: 1,
+    // A translucent plate rather than a text shadow: it stays legible over both a
+    // dark monitor and a bright wall, and the textShadow* style props are
+    // deprecated on the web renderer.
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
   },
 
   guideWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },

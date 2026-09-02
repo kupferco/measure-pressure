@@ -1,11 +1,15 @@
 -- Accounts and how people sign in.
 --
+-- There is deliberately no "role" here. Being a doctor is not a property of an
+-- account, it is a relationship: you can see someone's readings because they
+-- shared them with you (see shares). The same person can track their own blood
+-- pressure and read their patients', and a role column would force a false choice
+-- between the two.
+--
 -- These files DECLARE the shape the database should have. They are not change
 -- scripts: nothing here says "add" or "alter". Edit a table to look how you want
 -- it to look, run `npm run db:plan`, and the diff against the live database is
 -- worked out for you.
-
-create type user_role as enum ('patient', 'doctor');
 
 -- Emails are stored lower-cased. That is enforced at every entry point by the
 -- shared `emailSchema` (zod `.toLowerCase()`), which is why a plain unique column
@@ -14,7 +18,6 @@ create table users (
   id            uuid primary key default gen_random_uuid(),
   email         text not null unique,
   name          text,
-  role          user_role not null default 'patient',
   created_at    timestamptz not null default now(),
   last_login_at timestamptz
 );

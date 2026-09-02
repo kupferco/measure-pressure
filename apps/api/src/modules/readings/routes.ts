@@ -7,8 +7,10 @@ import {
   uuidSchema,
 } from '@mp/shared';
 import { requireAuth } from '../../lib/auth-plugin.js';
+import { ApiError } from '../../lib/errors.js';
 import {
   createReading,
+  deleteAllReadings,
   deleteReading,
   getReading,
   listReadings,
@@ -40,6 +42,19 @@ export const readingRoutes: FastifyPluginAsync = async (app) => {
     const { id } = idParams.parse(request.params);
     const input = updateReadingSchema.parse(request.body);
     return { reading: await updateReading(request.requireUser().id, id, input) };
+  });
+
+  /**
+   * Wipes this person's readings. Requires the caller to type their own email back,
+   * which is a deliberate speed bump on an irreversible action.
+   */
+  app.delete('/readings', async (request) => {
+    const user = request.requireUser();
+    const { confirmEmail } = z.object({ confirmEmail: z.string() }).parse(request.body);
+    if (confirmEmail.trim().toLowerCase() !== user.email) {
+      throw ApiError.badRequest('Type your email address exactly to confirm.');
+    }
+    return deleteAllReadings(user.id);
   });
 
   app.delete('/readings/:id', async (request, reply) => {

@@ -11,7 +11,7 @@ import { colors } from '../src/lib/theme';
  * once they do. Everything else is reachable from the camera.
  */
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, patientCount, readingCount } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -21,9 +21,18 @@ function AuthGate() {
     // session - so it has to be allowed through, or the gate redirects away from
     // the very screen that would create one.
     const onPublicRoute = segments[0] === 'sign-in' || segments[0] === 'verify';
-    if (!user && !onPublicRoute) router.replace('/sign-in');
-    else if (user && segments[0] === 'sign-in') router.replace('/');
-  }, [user, loading, segments, router]);
+    if (!user && !onPublicRoute) {
+      router.replace('/sign-in');
+      return;
+    }
+    if (user && segments[0] === 'sign-in') {
+      // Where someone lands is decided by how they use the app, not by a role on
+      // their account. Patients shared with you and nothing of your own means you
+      // are here to read someone else's readings, so the camera is the wrong door.
+      const isVisitingDoctor = patientCount > 0 && readingCount === 0;
+      router.replace(isVisitingDoctor ? '/patients' : '/');
+    }
+  }, [user, loading, patientCount, readingCount, segments, router]);
 
   if (loading) return <Loading />;
 
@@ -45,7 +54,9 @@ function AuthGate() {
       <Stack.Screen name="dashboard" options={{ title: 'Your readings' }} />
       <Stack.Screen name="insights" options={{ title: 'What affects you' }} />
       <Stack.Screen name="tags" options={{ title: 'Context tags' }} />
-      <Stack.Screen name="sharing" options={{ title: 'Sharing' }} />
+      <Stack.Screen name="sharing" options={{ title: 'Who can see my readings' }} />
+      <Stack.Screen name="patients" options={{ title: 'Patients' }} />
+      <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="patient/[id]" options={{ title: 'Readings' }} />
     </Stack>
   );

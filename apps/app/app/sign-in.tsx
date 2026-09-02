@@ -8,14 +8,18 @@ import { colors, radius, spacing, type } from '../src/lib/theme';
 /**
  * Two steps, no password: enter an email, then the six digits it receives.
  *
- * The email also contains a link, which is what the doctor will use in a browser.
+ * Email only. A name is asked for later, on the profile screen, because it is
+ * profile information rather than a credential - collecting it here would let the
+ * same person arrive as "Daniel Kupfer" one week and "Dani" the next while the
+ * account was only ever keyed by the address.
+ *
+ * The email also contains a link, which is what a doctor will use in a browser.
  * On a phone the code is far less fiddly than bouncing out to Mail and back.
  */
 export default function SignInScreen() {
   const { signIn } = useAuth();
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +33,7 @@ export default function SignInScreen() {
     setBusy(true);
     setError(null);
     try {
-      await api.requestLogin(trimmed, name.trim() || undefined);
+      await api.requestLogin(trimmed);
       setStep('code');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send the code.');
@@ -55,7 +59,7 @@ export default function SignInScreen() {
         <Title>Measure Pressure</Title>
         <Body muted>
           {step === 'email'
-            ? 'Sign in with your email. No password to remember.'
+            ? 'Enter your email. No password, no account to create - the same address always reaches the same readings.'
             : `We sent six digits to ${email}. It expires in 15 minutes.`}
         </Body>
       </View>
@@ -72,15 +76,6 @@ export default function SignInScreen() {
             autoCorrect={false}
             autoComplete="email"
             accessibilityLabel="Email address"
-            style={styles.input}
-          />
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name (only needed the first time)"
-            placeholderTextColor={colors.textFaint}
-            autoCapitalize="words"
-            accessibilityLabel="Your name"
             style={styles.input}
           />
           <Button label="Send me a code" onPress={sendCode} loading={busy} />
