@@ -10,6 +10,9 @@ his father, and his doctor. Not a product, and not intended to become one.
   changed, stop. An earlier "commit and push" does not authorise the next one.
 - **Be brief.** He has asked for this more than once. Short sentences, no preamble,
   no restating what he just said.
+- **Plain English.** No jargon, no shorthand, no clever compression. He has asked
+  for this too. "Run and deploy together?" wasted a round trip; "I'll grant the
+  permission, then deploy" would not have. Say the thing you mean, in full.
 - **Check before inferring.** Several bugs in this repo's history came from acting
   on a plausible assumption instead of running one command to find out. If a
   database, a log or an API can answer the question, ask it.

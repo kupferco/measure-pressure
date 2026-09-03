@@ -46,12 +46,27 @@ class GcsImageStore implements ImageStore {
     const file = this.storage.bucket(this.bucketName).file(objectName);
     const [exists] = await file.exists();
     if (!exists) return null;
-    const [url] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + URL_TTL_MS,
-    });
-    return url;
+    try {
+      const [url] = await file.getSignedUrl({
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + URL_TTL_MS,
+      });
+      return url;
+    } catch (err) {
+      // Signing a v4 URL from Cloud Run is not a storage call: it goes to the IAM
+      // Credentials API to sign with the runtime service account's key, and needs
+      // roles/iam.serviceAccountTokenCreator on that account. Without it every
+      // signature fails with iam.serviceAccounts.signBlob denied - and because the
+      // URL is the last thing assembled in a scan response, an unhandled throw here
+      // took down the whole capture *after* the photo was stored and read.
+      //
+      // The photo is decoration on a screen that already has the local one. Losing
+      // it must never lose the reading, so this degrades to null - which the API
+      // contract has always allowed - and says so loudly enough to be found.
+      console.error({ err, objectName }, 'could not sign a URL for a stored photo');
+      return null;
+    }
   }
 
   async read(objectName: string): Promise<Buffer | null> {
