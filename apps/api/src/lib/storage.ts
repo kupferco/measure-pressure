@@ -28,7 +28,7 @@ function objectNameFor(contentType: string): string {
   return `scans/${stamp}/${randomUUID()}.${ext}`;
 }
 
-class GcsImageStore implements ImageStore {
+export class GcsImageStore implements ImageStore {
   private storage = new Storage();
 
   constructor(private readonly bucketName: string) {}
