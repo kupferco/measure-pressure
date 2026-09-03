@@ -1,10 +1,6 @@
 import { DEFAULT_RANGE, describeWindow, rangeDays, withinRange, type RangeId } from '@mp/shared';
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -18,19 +14,18 @@ import { RangeTabs } from '../../src/components/RangeTabs';
 import { Caption, EmptyState, ErrorNote, Loading } from '../../src/components/ui';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth';
-import { capturePhotoInBrowser } from '../../src/lib/capture';
-import { colors, radius, spacing, type } from '../../src/lib/theme';
+import { colors, spacing } from '../../src/lib/theme';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
 
 /**
  * Home.
  *
- * Two things and nothing else: how the readings are going, and the button that
- * adds another. Everything else is a tab away.
+ * How the readings are going, and nothing else. Adding one is the camera in the
+ * middle of the tab bar, which is reachable from every screen rather than only
+ * from here.
  */
 export default function HomeScreen() {
-  const router = useRouter();
   const { width } = useWindowDimensions();
   const { user } = useAuth();
 
@@ -58,17 +53,6 @@ export default function HomeScreen() {
     // gate is still deciding whether to send this person to sign in.
     if (user) load();
   }, [load, user]);
-
-  const capture = async () => {
-    if (Platform.OS === 'web') {
-      // A file input has to be opened by a real tap, so this is as direct as the
-      // browser allows: one press, straight to the camera, no screen in between.
-      const uri = await capturePhotoInBrowser();
-      if (uri) router.push({ pathname: '/confirm', params: { uri } });
-      return;
-    }
-    router.push('/capture');
-  };
 
   if (loading) return <Loading />;
 
@@ -102,7 +86,7 @@ export default function HomeScreen() {
             title="Nothing here yet"
             body={
               points.length === 0
-                ? 'Take a photo of your monitor and the numbers land here.'
+                ? 'Tap the camera below, photograph your monitor, and the numbers land here.'
                 : 'No readings in this period. Try a longer one.'
             }
           />
@@ -127,26 +111,6 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
-
-      {/* The reason the app exists, given the space that implies. */}
-      <View style={styles.actionBar}>
-        <Pressable
-          onPress={capture}
-          accessibilityRole="button"
-          accessibilityLabel="Open the camera to take a reading"
-          style={({ pressed }) => [styles.capture, pressed && { opacity: 0.85 }]}
-        >
-          <Text style={styles.captureLabel}>Open camera</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => router.push('/confirm')}
-          accessibilityRole="button"
-          accessibilityLabel="Type a reading by hand"
-          hitSlop={8}
-        >
-          <Text style={[type.caption, { color: colors.textMuted }]}>Type it instead</Text>
-        </Pressable>
-      </View>
     </SafeAreaView>
   );
 }
@@ -165,23 +129,4 @@ const styles = StyleSheet.create({
   headline: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   average: { fontSize: 52, fontWeight: '700', color: colors.text, letterSpacing: -1.5 },
   slash: { fontSize: 36, color: colors.textFaint, fontWeight: '400' },
-
-  actionBar: {
-    padding: spacing.lg,
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
-    alignItems: 'center',
-    maxWidth: 720,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  capture: {
-    width: '100%',
-    minHeight: 62,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  captureLabel: { fontSize: 19, fontWeight: '700', color: colors.accentText },
 });
