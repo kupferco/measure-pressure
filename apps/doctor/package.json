@@ -7,7 +7,7 @@
     "dev": "vite --port 5174",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc -b",
     "test": "vitest run"
   },
   "dependencies": {
