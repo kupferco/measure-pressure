@@ -32,6 +32,7 @@
     "build:doctor": "npm run build:shared && npm run build --workspace=@mp/doctor",
     "landing": "npm run dev --workspace=@mp/landing",
     "build:landing": "npm run build --workspace=@mp/landing",
+    "icons": "node scripts/build-icons.mjs",
     "build:hosting": "node scripts/build-hosting.mjs",
     "deploy": "npm run deploy:staging",
     "deploy:staging": "npm run deploy:api:staging && npm run build:hosting && firebase hosting:channel:deploy staging --only app,landing --expires 30d",
