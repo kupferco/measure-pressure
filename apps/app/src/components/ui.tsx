@@ -62,9 +62,19 @@ export function Caption({ children, style }: { children: ReactNode; style?: Styl
   return <Text style={[type.caption, { color: colors.textMuted }, style]}>{children}</Text>;
 }
 
-export function Label({ children }: { children: ReactNode }) {
+export function Label({
+  children,
+  numberOfLines,
+}: {
+  children: ReactNode;
+  /** Set to 1 where labels head the columns of a row and must not wrap out of line. */
+  numberOfLines?: number;
+}) {
   return (
-    <Text style={[type.label, { color: colors.textFaint, textTransform: 'uppercase' }]}>
+    <Text
+      numberOfLines={numberOfLines}
+      style={[type.label, { color: colors.textFaint, textTransform: 'uppercase' }]}
+    >
       {children}
     </Text>
   );

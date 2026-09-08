@@ -63,3 +63,19 @@ export type Arm = (typeof ARMS)[number];
 
 export const POSTURES = ['sitting', 'lying', 'standing', 'unknown'] as const;
 export type Posture = (typeof POSTURES)[number];
+
+/**
+ * The postures a person picks from when saving, in the order they are offered.
+ *
+ * Sitting first because it is what the guidelines assume and what most readings
+ * are. `unknown` is deliberately not here: it is what the column holds for the
+ * readings taken before the question was asked, not something anyone can choose.
+ */
+export const POSTURE_CHOICES = ['sitting', 'lying', 'standing'] as const;
+
+export const POSTURE_LABEL: Record<Posture, string> = {
+  sitting: 'Sitting',
+  lying: 'Lying down',
+  standing: 'Standing',
+  unknown: 'Not recorded',
+};

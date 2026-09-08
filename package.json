@@ -26,6 +26,7 @@
     "db:plan": "node scripts/atlas.mjs schema apply --env app --dry-run",
     "db:inspect": "node scripts/atlas.mjs schema inspect --env app --format \"{{ sql . }}\"",
     "seed": "node scripts/seed.mjs",
+    "scan:check": "npm run scan:check --workspace=@mp/api --",
     "dev:doctor": "npm run build:shared && npm run dev --workspace=@mp/doctor",
     "build:doctor": "npm run build:shared && npm run build --workspace=@mp/doctor",
     "build:hosting": "node scripts/build-hosting.mjs",

@@ -57,4 +57,15 @@ export default function Root({ children }: PropsWithChildren) {
 const shellStyle = `
   html, body { background-color: #0f172a; }
   body { overscroll-behavior-y: none; }
+
+  /*
+    The browser's own focus ring is whatever the platform picked, which on the
+    confirm screen came out amber - the one colour that already means "the parser
+    was unsure" there. Recolour it to the accent (colors.accent) rather than
+    removing it, so keyboard users keep it. Text fields draw their own focus
+    border, so they opt out here instead of carrying two.
+  */
+  :focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+  input:focus, input:focus-visible,
+  textarea:focus, textarea:focus-visible { outline: none; }
 `;
