@@ -221,17 +221,47 @@ Two deployables, on purpose.
 | | Where | Why |
 |---|---|---|
 | API | Cloud Run, scale-to-zero | Idle costs nothing |
-| Patient app + clinician app | Firebase Hosting, one site | Static files off a CDN, free tier, instant rollback |
+| Patient app + clinician app | Firebase Hosting, the `app` site | Static files off a CDN, free tier, instant rollback |
+| Landing page | Firebase Hosting, the `landing` site | Public, so deliberately a different origin - see below |
 
 Firebase Hosting rewrites `/api/**` to the Cloud Run service. That is the load
 bearing detail: the browser sees a single origin, so the session cookie set by the
 API is sent by both apps, and there is no CORS anywhere in production.
 
 ```
-https://measure-pressure.web.app/          patient app
-https://measure-pressure.web.app/doctor    clinician app
-https://measure-pressure.web.app/api/*  →  Cloud Run
+https://measure-pressure-app.web.app/          patient app
+https://measure-pressure-app.web.app/doctor    clinician app
+https://measure-pressure-app.web.app/api/*  →  Cloud Run
+
+https://measurepressure.web.app/               landing page - the link you send
 ```
+
+### Why the landing page has an origin of its own
+
+Two Hosting sites in one Firebase project, not two projects and not two paths on
+one site. Three reasons, in order of weight:
+
+1. **The cookie jar.** `__session` is scoped to the origin that set it. The landing
+   page is the one page here that will plausibly grow an analytics tag, an embed,
+   or a block of markup someone pasted in. On a separate origin, none of that can
+   ever sit next to a session that reads medical data.
+2. **The installed app's scope.** Add to Home Screen claims the whole origin. If
+   the landing page shared it, a link to it would open *inside* the standalone
+   window - no address bar, no back button, no way out. On its own origin it opens
+   in the browser, which is what a reader wants.
+3. **Blast radius.** The app's URL must never change: it is saved to a home screen.
+   The landing page's URL is free to move, because nobody saves it. Separating them
+   means editing the second can never break the first.
+
+Two *sites* rather than two *projects* because the API, the database, the storage
+bucket and both apps live in the one project regardless; a second project would add
+a console, a set of credentials and a config file while buying nothing that a
+second site does not already give.
+
+`measure-pressure.web.app` would have been the obvious name and is not available -
+Firebase site IDs are a single global namespace and another project reserved it. If
+a real domain is ever registered, both sites take a custom domain for free and the
+`.web.app` addresses keep working alongside it.
 
 The API image contains no client code. An earlier version served the web build
 from the same container, which worked but meant every UI change rebuilt and
@@ -247,14 +277,36 @@ redeployed a Node image to change a CSS file.
 Deploying never touches the database. Schema changes are applied separately and
 deliberately, with `npm run db:plan` then `npm run db:apply`.
 
+### Staging, and what it is not
+
+`npm run deploy` goes to staging; `npm run deploy:prod` goes live. Each piece can
+also be deployed on its own - `deploy:api:*`, `deploy:app:*`, `deploy:landing:*`,
+each with `:staging`, `:prod` and `:both`.
+
+Staging for the API is a second Cloud Run service. Staging for the two Hosting
+sites is a **preview channel** rather than a second site: a temporary URL off the
+same site, free, expiring after 30 days, needing no new infrastructure and no
+second copy of the config.
+
+What none of it is, is isolation. The staging API reads the same Neon database as
+production, and a preview channel's `/api` rewrite still points at the *production*
+Cloud Run service, because rewrites come from the one `firebase.json`. So staging
+here answers "does this look right before anyone else sees it" - which is worth
+having for the landing page especially - and not "is this safe to try". Real
+isolation would need a second database, and with three users that is not yet worth
+the money or the trouble.
+
 The hosting rules - routing, clean URLs, cache and security headers - can be
-checked before any deploy with `firebase emulators:start --only hosting`.
+checked before any deploy with `firebase emulators:start --only hosting`, which
+serves both sites on separate ports and reads the real `firebase.json`.
 
 ## Repository layout
 
 ```
 apps/api/          Fastify API - auth, readings, tags, scans, reports, sharing
 apps/app/          Expo app - iOS native + web build
+apps/doctor/       Vite + React - the clinician's table
+apps/landing/      Vite + React - one page: what the app is, and how to install it
 packages/shared/   Domain rules and API contracts used by both
 db/schema/         Declarative schema - what the database should look like
 deploy/            Dockerfile, Cloud Build, deploy script, one-time GCP setup

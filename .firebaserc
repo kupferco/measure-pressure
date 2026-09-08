@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "measure-pressure-app"
+  },
+  "targets": {
+    "measure-pressure-app": {
+      "hosting": {
+        "app": [
+          "measure-pressure-app"
+        ],
+        "landing": [
+          "measurepressure"
+        ]
+      }
+    }
   }
 }

@@ -25,6 +25,8 @@ his father, and his doctor. Not a product, and not intended to become one.
 apps/api/          Fastify + Postgres. Auth, readings, tags, scans, reports, sharing
 apps/app/          Expo (React Native). The patient, on iOS and the web
 apps/doctor/       Vite + React. The clinician, web only
+apps/landing/      Vite + React. One page: what the app is, and how to save it to a phone.
+                   Its own Hosting site, on purpose - see docs/architecture.md
 packages/shared/   Domain rules and API contracts used by all three
 db/schema/         Declarative schema - what the database should look like
 deploy/            Dockerfile, Cloud Build, deploy script, SETUP.md
@@ -41,6 +43,7 @@ cannot do well, which is what decided it.
 npm run dev:api          # API on :8080
 npm run dev:app          # Expo - press w for web, or scan with Expo Go
 npm run dev:doctor       # clinician app on :5174, proxies /api to :8080
+npm run landing          # landing page on :5175
 
 npm test                 # parser + statistics + diary bucketing
 npm run typecheck
@@ -48,8 +51,13 @@ npm run typecheck
 npm run db:plan          # read-only diff against the live database
 npm run db:apply         # apply it, after showing the plan and asking
 
-npm run deploy:api:prod  # Cloud Run
-npm run deploy:hosting   # both client apps to Firebase Hosting
+npm run deploy           # everything to staging (same as deploy:staging)
+npm run deploy:staging   # API to Cloud Run staging, both sites to preview URLs
+npm run deploy:prod      # API to Cloud Run prod, both sites live
+
+npm run deploy:api:prod       # one piece at a time. :staging and :both exist
+npm run deploy:app:prod       # for each of api, app and landing
+npm run deploy:landing:prod
 ```
 
 ## Things that will bite you
@@ -57,6 +65,10 @@ npm run deploy:hosting   # both client apps to Firebase Hosting
 - **The schema is declarative.** Edit `db/schema/*.sql` to describe the end state;
   Atlas works out the diff. Do not write migrations. Deleting a column from the
   file plans a `DROP COLUMN`.
+- **"Staging" is a preview, not a sandbox.** The staging API and the Hosting
+  preview channels all read the same Neon database as production, and a preview
+  channel's `/api` still points at the *production* Cloud Run service. So staging
+  answers "does this look right before anyone sees it", not "is this safe to try".
 - **One Neon database** behind local, staging and production. `npm run db:apply`
   from a laptop is a production change. `docker compose up db` gives a throwaway
   Postgres for trying something first.
@@ -118,6 +130,8 @@ which.
 https://measure-pressure-app.web.app          patient
 https://measure-pressure-app.web.app/doctor   clinician
 https://measure-pressure-app.web.app/api/*    rewritten to Cloud Run
+
+https://measurepressure.web.app               landing page, the link to send someone
 ```
 
 GCP project `measure-pressure-app` (not `lv-notas`, which runs other work).

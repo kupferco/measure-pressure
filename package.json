@@ -9,7 +9,8 @@
     "packages/shared",
     "apps/api",
     "apps/app",
-    "apps/doctor"
+    "apps/doctor",
+    "apps/landing"
   ],
   "scripts": {
     "dev:api": "npm run build:shared && npm run dev --workspace=@mp/api",
@@ -29,9 +30,20 @@
     "scan:check": "npm run scan:check --workspace=@mp/api --",
     "dev:doctor": "npm run build:shared && npm run dev --workspace=@mp/doctor",
     "build:doctor": "npm run build:shared && npm run build --workspace=@mp/doctor",
+    "landing": "npm run dev --workspace=@mp/landing",
+    "build:landing": "npm run build --workspace=@mp/landing",
     "build:hosting": "node scripts/build-hosting.mjs",
-    "deploy:hosting": "npm run build:hosting && firebase deploy --only hosting",
+    "deploy": "npm run deploy:staging",
+    "deploy:staging": "npm run deploy:api:staging && npm run build:hosting && firebase hosting:channel:deploy staging --only app,landing --expires 30d",
+    "deploy:prod": "npm run deploy:api:prod && npm run build:hosting && firebase deploy --only hosting",
     "deploy:api:staging": "./deploy/deploy.sh staging",
-    "deploy:api:prod": "./deploy/deploy.sh prod"
+    "deploy:api:prod": "./deploy/deploy.sh prod",
+    "deploy:api:both": "npm run deploy:api:staging && npm run deploy:api:prod",
+    "deploy:app:staging": "npm run build:hosting && firebase hosting:channel:deploy staging --only app --expires 30d",
+    "deploy:app:prod": "npm run build:hosting && firebase deploy --only hosting:app",
+    "deploy:app:both": "npm run deploy:app:staging && npm run deploy:app:prod",
+    "deploy:landing:staging": "npm run build:hosting && firebase hosting:channel:deploy staging --only landing --expires 30d",
+    "deploy:landing:prod": "npm run build:hosting && firebase deploy --only hosting:landing",
+    "deploy:landing:both": "npm run deploy:landing:staging && npm run deploy:landing:prod"
   }
 }

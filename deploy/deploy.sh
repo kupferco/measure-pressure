@@ -7,7 +7,8 @@
 #
 # The two client apps are not in this image - they go to Firebase Hosting:
 #
-#   npm run deploy:hosting
+#   npm run deploy:app:prod       # the app and the clinician view
+#   npm run deploy:landing:prod   # the landing page
 #
 # Deploying never touches the database. Schema changes are applied separately and
 # deliberately with `npm run db:plan` then `npm run db:apply`.
