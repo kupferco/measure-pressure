@@ -46,9 +46,9 @@ export default function App() {
             <img src="/icon.png" alt="" />
             <span>Measure Pressure</span>
           </div>
-          <h1>Your blood pressure, written down for you.</h1>
+          <h1>Your blood pressure, written down.</h1>
           <p className="lede">
-            Take a photo of your monitor. The app reads the numbers, you check them, and they are
+            Take a photo of your Omron monitor. The app reads the numbers, you check them, and they are
             saved. Over time you can see what pushes them up or down, and your doctor can see them
             too.
           </p>
@@ -68,8 +68,8 @@ export default function App() {
           <div className="wrap">
             <h2>How it works</h2>
             <ol className="steps">
-              <Step n={1} title="Take a photo of your monitor">
-                Hold the phone over the screen and press the button. That is all.
+              <Step n={1} title="Take a photo of your Omron monitor">
+                Hold the phone over the display and press the button. That is all.
               </Step>
               <Step n={2} title="Check the numbers">
                 The app shows you what it read. If a number is wrong, tap it and change it. Nothing
@@ -145,6 +145,12 @@ export default function App() {
               </Question>
               <Question q="Does it need the internet?">
                 Yes. It needs a connection to read the photo and to save the numbers.
+              </Question>
+              <Question q="Will it work with my monitor?">
+                It is built for Omron monitors, which is what we have at home. It reads their
+                displays properly because it knows how they lay the numbers out. Another make
+                may still work, but it may not, and nothing is lost if it does not &mdash; you
+                type the numbers in instead and everything else works the same.
               </Question>
               <Question q="What if the photo does not work?">
                 You can always type the numbers in yourself. The photo is a shortcut, not a

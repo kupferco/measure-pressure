@@ -43,6 +43,7 @@
     "deploy:app:staging": "npm run build:hosting && firebase hosting:channel:deploy staging --only app --expires 30d",
     "deploy:app:prod": "npm run build:hosting && firebase deploy --only hosting:app",
     "deploy:app:both": "npm run deploy:app:staging && npm run deploy:app:prod",
+    "deploy:landing": "npm run deploy:landing:staging",
     "deploy:landing:staging": "npm run build:hosting && firebase hosting:channel:deploy staging --only landing --expires 30d",
     "deploy:landing:prod": "npm run build:hosting && firebase deploy --only hosting:landing",
     "deploy:landing:both": "npm run deploy:landing:staging && npm run deploy:landing:prod"
