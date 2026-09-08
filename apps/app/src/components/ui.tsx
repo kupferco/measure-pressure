@@ -16,10 +16,13 @@ import { colors, HIT_SIZE, radius, spacing, type } from '../lib/theme';
 export function Screen({
   children,
   scroll = true,
+  scrollEnabled = true,
   style,
 }: {
   children: ReactNode;
   scroll?: boolean;
+  /** Turn off while a drag is in progress, so the page does not move under it. */
+  scrollEnabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const content = (
@@ -32,6 +35,7 @@ export function Screen({
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          scrollEnabled={scrollEnabled}
         >
           {content}
         </ScrollView>

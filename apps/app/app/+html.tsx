@@ -31,6 +31,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Pressure" />
         <meta name="theme-color" content="#0f172a" />
+        {/*
+          The icon Add to Home Screen uses. Without it iOS takes a screenshot of
+          the page instead. Served from apps/app/public, which Expo copies to the
+          root of the web build.
+        */}
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
         {/* Replacing Expo's default document also replaced its <title>. */}
         <title>Measure Pressure</title>

@@ -5,7 +5,8 @@ Two things get deployed, separately:
 | | Where | Command |
 |---|---|---|
 | The API | Cloud Run | `./deploy/deploy.sh staging\|prod` |
-| Both client apps | Firebase Hosting | `npm run deploy:hosting` |
+| App + clinician view | Firebase Hosting, `app` site | `npm run deploy:app:prod` |
+| Landing page | Firebase Hosting, `landing` site | `npm run deploy:landing:prod` |
 
 Firebase Hosting rewrites `/api/**` to the Cloud Run service, so the browser sees
 a single origin. That is what makes the session cookie work across the patient app
@@ -171,7 +172,7 @@ the API log.
 
 ```sh
 ./deploy/deploy.sh staging     # API
-npm run deploy:hosting         # both apps
+npm run deploy:prod            # API, both apps, landing page
 ```
 
 `staging` and `prod` are two Cloud Run services against the same database - see

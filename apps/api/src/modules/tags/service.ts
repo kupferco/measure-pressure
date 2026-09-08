@@ -42,8 +42,16 @@ export async function listTags(userId: string, includeArchived = false): Promise
 }
 
 export async function createTag(userId: string, input: CreateTagInput): Promise<Tag> {
+  /*
+   * New tags go to the top, not the bottom.
+   *
+   * Appending put a just-created tag at the end of a list of twenty-odd, below
+   * the fold on a phone - so it looked like nothing had happened. Someone who has
+   * this moment typed a tag should see it without scrolling, and can drag it
+   * wherever they want afterwards.
+   */
   const { rows: maxRows } = await query<{ next: number }>(
-    'select coalesce(max(sort_order), -1) + 1 as next from tags where user_id = $1',
+    'select coalesce(min(sort_order), 0) - 1 as next from tags where user_id = $1',
     [userId],
   );
   try {

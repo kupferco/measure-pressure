@@ -24,7 +24,8 @@
       "package": "co.kupfer.measurepressure",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0f172a"
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#3599e5"
       }
     },
     "web": {

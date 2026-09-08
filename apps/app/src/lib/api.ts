@@ -131,6 +131,8 @@ export const api = {
   updateTag: (id: string, input: UpdateTagInput) =>
     request<{ tag: Tag }>(`/tags/${id}`, { method: 'PATCH', body: input }),
   deleteTag: (id: string) => request<{ archived: boolean }>(`/tags/${id}`, { method: 'DELETE' }),
+  /** Ids in the order they should appear. The server rewrites every sort_order. */
+  reorderTags: (ids: string[]) => request<{ tags: Tag[] }>('/tags/reorder', { body: { ids } }),
 
   // readings
   listReadings: (params: { from?: string; to?: string; limit?: number } = {}) => {

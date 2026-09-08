@@ -1,77 +1,127 @@
 {
-  "hosting": {
-    "site": "measure-pressure-app",
-    "public": "dist",
-    "ignore": [
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "cleanUrls": true,
-    "rewrites": [
-      {
-        "comment": "The API. Rewritten rather than called cross-origin, so the browser sees one origin and the session cookie works with no CORS involved.",
-        "source": "/api/**",
-        "run": {
-          "serviceId": "measure-pressure-api",
-          "region": "us-central1"
+  "hosting": [
+    {
+      "comment": "measure-pressure-app.web.app - the app, the clinician view, and the API. This is the address saved to a home screen, so it does not move.",
+      "target": "app",
+      "public": "dist/app",
+      "ignore": [
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "cleanUrls": true,
+      "rewrites": [
+        {
+          "comment": "The API. Rewritten rather than called cross-origin, so the browser sees one origin and the session cookie works with no CORS involved.",
+          "source": "/api/**",
+          "run": {
+            "serviceId": "measure-pressure-api",
+            "region": "us-central1"
+          }
+        },
+        {
+          "comment": "The clinician app routes on the client; any /doctor path without a file falls back to its own index.",
+          "source": "/doctor/**",
+          "destination": "/doctor/index.html"
+        },
+        {
+          "comment": "Everything else belongs to the patient app.",
+          "source": "**",
+          "destination": "/index.html"
         }
-      },
-      {
-        "comment": "The clinician app routes on the client; any /doctor path without a file falls back to its own index.",
-        "source": "/doctor/**",
-        "destination": "/doctor/index.html"
-      },
-      {
-        "comment": "Everything else belongs to the patient app.",
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "comment": "Applies to every path, including '/' and the clean URLs, which a *.html glob would miss because these rules match the request path rather than the file served. Medical pages, so keep them out of caches and referrers.",
-        "source": "**",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          },
-          {
-            "key": "Referrer-Policy",
-            "value": "same-origin"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          },
-          {
-            "key": "X-Frame-Options",
-            "value": "DENY"
-          }
-        ]
-      },
-      {
-        "comment": "Listed after the catch-all so it wins: fingerprinted bundles never change under the same name, so they can be cached forever.",
-        "source": "**/@(assets|_expo)/**",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "comment": "Listed last so it wins over the catch-all: API responses carry medical data and must not be written to any cache, not merely revalidated.",
-        "source": "/api/**",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "private, no-store"
-          }
-        ]
-      }
-    ]
-  },
+      ],
+      "headers": [
+        {
+          "comment": "Applies to every path, including '/' and the clean URLs, which a *.html glob would miss because these rules match the request path rather than the file served. Medical pages, so keep them out of caches and referrers.",
+          "source": "**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            }
+          ]
+        },
+        {
+          "comment": "Listed after the catch-all so it wins: fingerprinted bundles never change under the same name, so they can be cached forever.",
+          "source": "**/@(assets|_expo)/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        },
+        {
+          "comment": "Listed last so it wins over the catch-all: API responses carry medical data and must not be written to any cache, not merely revalidated.",
+          "source": "/api/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "private, no-store"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "comment": "measurepressure.web.app - the landing page, on its own origin. Deliberately not a path on the app's site: a separate origin keeps the session cookie and the installed app's scope away from a public page, and means a link to it opens in the browser rather than inside the home-screen app.",
+      "target": "landing",
+      "public": "dist/landing",
+      "ignore": [
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "cleanUrls": true,
+      "rewrites": [
+        {
+          "comment": "One page. Anything that is not a file gets it.",
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "comment": "No medical data here, so this can be cached - but only briefly, so a correction to the install instructions reaches a phone that has already been sent the link.",
+          "source": "**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=300"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "DENY"
+            }
+          ]
+        },
+        {
+          "comment": "Listed last so it wins: the bundles are fingerprinted, so they never change under the same name.",
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "emulators": {
     "hosting": {
       "port": 5010
