@@ -58,6 +58,28 @@ function AppIcon({ x, y, size }: { x: number; y: number; size: number }) {
   );
 }
 
+/**
+ * The share symbol at reading size, for printing inside a sentence.
+ *
+ * The step that says "a square with an arrow coming out of the top" is the one
+ * an older iPhone lands on, and describing a symbol in words to someone who is
+ * hunting for it on a toolbar is much worse than showing it to them.
+ */
+export function ShareSymbol() {
+  return (
+    <svg
+      className="glyph"
+      viewBox="0 0 34 34"
+      width="22"
+      height="22"
+      role="img"
+      aria-label="the Share symbol"
+    >
+      <ShareGlyph cx={17} cy={17} color="currentColor" />
+    </svg>
+  );
+}
+
 /** iOS's share symbol: a box with an arrow rising out of it. */
 function ShareGlyph({ cx, cy, color }: { cx: number; cy: number; color: string }) {
   return (
@@ -93,27 +115,65 @@ function AppScreen({ top, bottom }: { top: number; bottom: number }) {
   );
 }
 
-/* ---- iPhone (Safari) ---------------------------------------------------- */
+/* ---- iPhone, Safari ------------------------------------------------------
+ *
+ * Drawn from photographs of a real iPhone rather than from memory, which is how
+ * the first version of this file went wrong: it showed a Share button sitting in
+ * Safari's toolbar, and on a current iPhone there is no such button. The toolbar
+ * holds a "..." that opens a menu, and Share is inside that menu.
+ *
+ * Safari also tints its toolbar to match the page, and the app is dark, so the
+ * bar is drawn dark here. That is what the reader will be looking at.
+ */
 
-export function IosShareButton() {
+export function SafariMenuButton() {
   return (
-    <Phone label="Safari, with the Share button at the bottom of the screen circled in red">
-      <AppScreen top={40} bottom={380} />
-      {/* Safari's bottom bar: address, then the row of buttons. */}
-      <rect x="10" y="380" width={W - 20} height="90" fill="#f7f7f7" />
-      <rect x="28" y="388" width={W - 56} height="34" rx="9" fill="#e8e8ed" />
-      <text x={W / 2} y="410" textAnchor="middle" fill={ink} fontSize="13">
-        measure-pressure-app.web.app
+    <Phone label="Safari, with the three-dots button at the bottom right of the screen circled in red">
+      <AppScreen top={40} bottom={470} />
+      {/* Safari's floating toolbar: back, the address pill, then the menu. */}
+      <circle cx="46" cy="440" r="21" fill="#1e293b" />
+      <path d="M52 432 l-8 8 l8 8" fill="none" stroke="#cbd5e1" strokeWidth="2.6"
+            strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="76" y="419" width="156" height="42" rx="21" fill="#1e293b" />
+      <text x="154" y="445" textAnchor="middle" fill="#cbd5e1" fontSize="12">
+        ...app.web.app
       </text>
-      <g stroke={grey} strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M58 448 l-8 -8 l8 -8" />
-        <path d="M110 448 l8 -8 l-8 -8" />
-        <path d="M212 432 v16 h16 M212 448 l14 -14" />
-        <rect x="256" y="432" width="14" height="16" rx="2" />
-        <rect x="262" y="428" width="14" height="16" rx="2" />
+      <circle cx="270" cy="440" r="21" fill="#1e293b" />
+      <g fill="#cbd5e1">
+        <circle cx="261" cy="440" r="2.4" />
+        <circle cx="270" cy="440" r="2.4" />
+        <circle cx="279" cy="440" r="2.4" />
       </g>
-      <ShareGlyph cx={160} cy={442} color="#0a7aff" />
-      <Ring cx={160} cy={440} r={24} />
+      <Ring cx={270} cy={440} r={31} />
+    </Phone>
+  );
+}
+
+export function SafariMenu() {
+  const rows: Array<[number, string, boolean]> = [
+    [292, 'Share', true],
+    [330, 'Add to Bookmarks', false],
+    [368, 'Add Bookmark to...', false],
+    [414, 'New Tab', false],
+    [452, 'New Private Tab', false],
+  ];
+  return (
+    <Phone label="Safari's menu, with the word Share at the top of it outlined in red">
+      <AppScreen top={40} bottom={470} />
+      {/* The menu opens upward from the "..." button, so it hangs off the
+          bottom right corner rather than sitting in the middle. */}
+      <rect x="106" y="268" width="184" height="196" rx="16" fill="#1b2536" />
+      {rows.map(([y, text, hit]) => (
+        <g key={text}>
+          <text x="126" y={y} fill="#f1f5f9" fontSize="14" fontWeight={hit ? 700 : 400}>
+            {text}
+          </text>
+          {text === 'Add Bookmark to...' && (
+            <line x1="120" y1={y + 18} x2="276" y2={y + 18} stroke="#334155" />
+          )}
+        </g>
+      ))}
+      <Highlight x={112} y={274} w={172} h={30} />
     </Phone>
   );
 }
@@ -149,12 +209,128 @@ function ShareSheetTop({ y }: { y: number }) {
 }
 
 /**
- * Step one of the sheet: the round buttons at the bottom, with View More on the
- * end. On an up-to-date iPhone the list of actions starts collapsed and this is
- * the button that opens it. Older phones show the list already, which is why the
- * page tells the reader to skip this if they can see Add to Home Screen.
+ * The row of round buttons along the bottom of the share sheet, with View More
+ * on the end. The list of written-out actions starts collapsed on a current
+ * iPhone, and this is the button that opens it.
  */
-export function IosShareSheetCollapsed() {
+function ActionRow({
+  labels,
+  ringLast,
+}: {
+  labels: Array<[string, string]>;
+  ringLast: boolean;
+}) {
+  const columns = [46, 116, 186, 256];
+  return (
+    <g>
+      {labels.map(([first, second], i) => (
+        <g key={first + second}>
+          <circle cx={columns[i]} cy="394" r="26" fill="#e3e3e8" />
+          <text
+            x={columns[i]}
+            y={second ? 434 : 438}
+            textAnchor="middle"
+            fill={ink}
+            fontSize="11"
+            fontWeight={ringLast && i === 3 ? 700 : 400}
+          >
+            {first}
+          </text>
+          {second && (
+            <text x={columns[i]} y="447" textAnchor="middle" fill={ink} fontSize="11">
+              {second}
+            </text>
+          )}
+        </g>
+      ))}
+      {/* The chevron on the last button points down: it opens the list. */}
+      <path
+        d="M244 388 l12 12 l12 -12"
+        stroke={ink}
+        strokeWidth="3"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {ringLast && <Ring cx={256} cy={394} r={34} />}
+    </g>
+  );
+}
+
+export function SafariShareSheet() {
+  return (
+    <Phone label="Safari's share panel, with the round View More button at the bottom right circled in red">
+      <AppScreen top={40} bottom={470} />
+      <rect x="10" y="140" width={W - 20} height="330" rx="20" fill="#f2f2f7" />
+      <ShareSheetTop y={140} />
+      <ActionRow
+        labels={[
+          ['Copy', ''],
+          ['Add to', 'Bookmarks'],
+          ['Add to', 'Reading List'],
+          ['View More', ''],
+        ]}
+        ringLast
+      />
+    </Phone>
+  );
+}
+
+export function SafariShareList() {
+  const rows = [
+    { y: 214, text: 'Add Bookmark to...' },
+    { y: 250, text: 'Add to Favourites' },
+    { y: 286, text: 'Add to Quick Note' },
+    { y: 322, text: 'Find on Page' },
+    { y: 358, text: 'Add to Home Screen', hit: true },
+  ];
+  return (
+    <Phone label="Safari's opened list, with the row that says Add to Home Screen outlined in red">
+      <AppScreen top={40} bottom={470} />
+      <rect x="10" y="90" width={W - 20} height="380" rx="20" fill="#f2f2f7" />
+      <rect x="140" y="100" width="40" height="5" rx="2.5" fill="#c7c7cc" />
+      <rect x="26" y="118" width="42" height="54" rx="6" fill="#0f172a" />
+      <rect x="80" y="130" width="150" height="10" rx="5" fill="#c7c7cc" />
+      <rect x="80" y="148" width="190" height="8" rx="4" fill="#dcdce1" />
+      <rect x="24" y="196" width={W - 48} height="192" rx="12" fill="#fff" />
+      {rows.map((row, i) => (
+        <g key={row.text}>
+          <text
+            x="40"
+            y={row.y + 18}
+            fill={ink}
+            fontSize="14"
+            fontWeight={row.hit ? 700 : 400}
+          >
+            {row.text}
+          </text>
+          {row.hit && <PlusSquare x={W - 66} y={row.y + 2} color={ink} />}
+          {i < rows.length - 1 && (
+            <line x1="40" y1={row.y + 32} x2={W - 40} y2={row.y + 32} stroke={line} />
+          )}
+        </g>
+      ))}
+      {/* Markup and Print sit below, in a group of their own - worth drawing,
+          because Add to Home Screen is the last row of the group above it and
+          looks like the end of the list until you notice there is more. */}
+      <rect x="24" y="404" width={W - 48} height="52" rx="12" fill="#fff" />
+      <text x="40" y="424" fill={grey} fontSize="14">Markup</text>
+      <text x="40" y="448" fill={grey} fontSize="14">Print</text>
+      <Highlight x={22} y={350} w={W - 44} h={40} />
+    </Phone>
+  );
+}
+
+/* ---- iPhone, Chrome ------------------------------------------------------
+ *
+ * The same share sheet, opened from Chrome instead, which words its own actions
+ * differently: "Send to your device" where Safari has "Add to Bookmarks", and a
+ * list underneath containing "Find in Page" and "Create a QR code" where Safari
+ * has "Find on Page" and "Add to Favourites". Close enough to look identical in
+ * a screenshot, different enough to send someone hunting for the wrong words.
+ */
+
+export function ChromeShareSheet() {
   const actions: Array<[number, string, string]> = [
     [46, 'Copy', ''],
     [116, 'Send to', 'your device'],
@@ -200,8 +376,8 @@ export function IosShareSheetCollapsed() {
   );
 }
 
-/** Step two: the list is open, and Add to Home Screen is in it. */
-export function IosShareSheetExpanded() {
+/** Chrome, with the list open: Add to Home Screen is at the bottom of it. */
+export function ChromeShareList() {
   const rows = [
     { y: 214, text: 'Add to bookmarks' },
     { y: 250, text: 'Create a QR code' },

@@ -4,11 +4,15 @@ import {
   AndroidHomeScreen,
   AndroidMenu,
   AndroidMenuButton,
+  ChromeShareList,
+  ChromeShareSheet,
   IosConfirmAdd,
   IosHomeScreen,
-  IosShareButton,
-  IosShareSheetCollapsed,
-  IosShareSheetExpanded,
+  SafariMenu,
+  SafariMenuButton,
+  SafariShareList,
+  SafariShareSheet,
+  ShareSymbol,
 } from './Figures.tsx';
 
 /**
@@ -24,15 +28,25 @@ const APP_URL = 'https://measure-pressure-app.web.app/';
 /** Daniel, for when something goes wrong. */
 const WHATSAPP_URL = 'https://wa.me/447866750132';
 
-type Platform = 'ios' | 'android';
+type Platform = 'safari' | 'chrome' | 'android';
 
 /**
- * The reader is on the phone they want to install it on, so guess from that and
- * let them correct it. Anything that is not Android is shown the iPhone steps,
- * which also serves a laptop reader who wants to see what their parent will see.
+ * Three sets of steps, because the buttons genuinely differ.
+ *
+ * Safari and Chrome on the same iPhone put Share in different places and word
+ * the actions differently - "Find on Page" against "Find in Page" - which is
+ * enough to strand someone who is reading the words rather than recognising the
+ * shapes. Guessing from the browser means most people never see the wrong one.
+ *
+ * Chrome on iOS identifies itself with CriOS. Everything else on an iPhone is
+ * shown the Safari steps, which is also the right default for a reader on a
+ * laptop looking at what their father will see.
  */
 function guessPlatform(): Platform {
-  return /android/i.test(navigator.userAgent) ? 'android' : 'ios';
+  const agent = navigator.userAgent;
+  if (/android/i.test(agent)) return 'android';
+  if (/CriOS/.test(agent)) return 'chrome';
+  return 'safari';
 }
 
 export default function App() {
@@ -95,11 +109,15 @@ export default function App() {
               once it is on your home screen. This takes about a minute, and you only do it once.
             </p>
 
+            {/* Two tabs, not three. Someone choosing a phone knows the answer;
+                someone choosing a browser may not, and Chrome on an iPhone is
+                rare enough to belong inside the iPhone steps rather than beside
+                them as an equal choice. */}
             <div className="tabs" role="tablist" aria-label="Which phone do you have?">
               <button
                 role="tab"
-                aria-selected={platform === 'ios'}
-                onClick={() => setPlatform('ios')}
+                aria-selected={platform !== 'android'}
+                onClick={() => setPlatform('safari')}
               >
                 iPhone
               </button>
@@ -112,7 +130,9 @@ export default function App() {
               </button>
             </div>
 
-            {platform === 'ios' ? <IosGuide /> : <AndroidGuide />}
+            {platform === 'safari' && <SafariGuide onUseChrome={() => setPlatform('chrome')} />}
+            {platform === 'chrome' && <ChromeGuide onUseSafari={() => setPlatform('safari')} />}
+            {platform === 'android' && <AndroidGuide />}
           </div>
         </section>
 
@@ -236,9 +256,25 @@ function GuideStep({
   );
 }
 
-function IosGuide() {
+/** A note under a step, in the quieter voice. */
+function Aside({ children }: { children: ReactNode }) {
   return (
-    <Guide>
+    <span className="muted" style={{ display: 'block', marginTop: 14, fontSize: 18 }}>
+      {children}
+    </span>
+  );
+}
+
+function SafariGuide({ onUseChrome }: { onUseChrome: () => void }) {
+  return (
+    <>
+      <p className="switch">
+        These are the steps for <strong>Safari</strong>, which is what almost everyone uses.{' '}
+        <button type="button" onClick={onUseChrome}>
+          I use Chrome on my iPhone
+        </button>
+      </p>
+      <Guide>
       <GuideStep n={1}>
         Open Measure Pressure in <strong>Safari</strong>, the browser with the blue compass. If
         you are reading this in Safari already, this button will do:
@@ -246,26 +282,75 @@ function IosGuide() {
         <a className="button" href={APP_URL} style={{ marginTop: 14 }}>
           Open Measure Pressure
         </a>
+        <Aside>
+          If this link arrived in WhatsApp or an email, it may have opened inside that app rather
+          than in Safari. It looks much the same but cannot add anything to your home screen.
+          Look for a small compass button, usually at the bottom, that says Open in Safari.
+        </Aside>
+      </GuideStep>
+      <GuideStep n={2} figure={<SafariMenuButton />}>
+        At the bottom of the screen, tap the <strong>three dots</strong> on the right.
+        <Aside>
+          On an older iPhone there are no three dots. You will see the Share button itself down
+          there instead <ShareSymbol />, a square with an arrow coming out of the top. Tap that
+          and skip to step 4.
+        </Aside>
+      </GuideStep>
+      <GuideStep n={3} figure={<SafariMenu />}>
+        A short menu appears. Tap <strong>Share</strong>, the first thing on it.
+      </GuideStep>
+      <GuideStep n={4} figure={<SafariShareSheet />}>
+        A panel slides up. Near the bottom is a row of round grey buttons. Tap the last one,
+        <strong> View More</strong>.
+        <Aside>
+          If you can already see the words Add to Home Screen, your phone has no View More
+          button. Skip straight to the next step.
+        </Aside>
+      </GuideStep>
+      <GuideStep n={5} figure={<SafariShareList />}>
+        A list appears. Tap <strong>Add to Home Screen</strong>. You may need to scroll down a
+        little to see it.
+      </GuideStep>
+      <GuideStep n={6} figure={<IosConfirmAdd />}>
+        Tap <strong>Add</strong> in the top right corner.
+      </GuideStep>
+      <GuideStep n={7} figure={<IosHomeScreen />}>
+        Done. There is now a <strong>Pressure</strong> icon on your home screen. From now on, open
+        it from there, like any other app.
+      </GuideStep>
+      </Guide>
+    </>
+  );
+}
+
+function ChromeGuide({ onUseSafari }: { onUseSafari: () => void }) {
+  return (
+    <>
+      <p className="switch">
+        These are the steps for <strong>Chrome on an iPhone</strong>.{' '}
+        <button type="button" onClick={onUseSafari}>
+          Show me the Safari steps instead
+        </button>
+      </p>
+      <Guide>
+      <GuideStep n={1}>
+        Open Measure Pressure in <strong>Chrome</strong>. If you are reading this in Chrome
+        already, this button will do:
         <br />
-        <span className="muted" style={{ display: 'block', marginTop: 14, fontSize: 18 }}>
-          If this link arrived in WhatsApp or an email and opened inside that app, the next step
-          will not be there. Copy the link and open it in Safari instead.
-        </span>
+        <a className="button" href={APP_URL} style={{ marginTop: 14 }}>
+          Open Measure Pressure
+        </a>
       </GuideStep>
-      <GuideStep n={2} figure={<IosShareButton />}>
-        Tap the <strong>Share</strong> button at the bottom of the screen. It is a square with an
-        arrow pointing up.
+      <GuideStep n={2}>
+        Open Chrome's menu and tap <strong>Share</strong>. Depending on your phone, that is
+        either three dots or the Share button itself <ShareSymbol />, a square with an arrow
+        coming out of the top.
       </GuideStep>
-      <GuideStep n={3} figure={<IosShareSheetCollapsed />}>
-        A panel slides up from the bottom. Near the bottom of it is a row of round grey buttons.
-        Tap the last one, <strong>View More</strong>.
-        <br />
-        <span className="muted" style={{ display: 'block', marginTop: 14, fontSize: 18 }}>
-          If you can already see the words Add to Home Screen, there is no View More button on
-          your phone. Skip straight to the next step.
-        </span>
+      <GuideStep n={3} figure={<ChromeShareSheet />}>
+        A panel slides up. Near the bottom is a row of round grey buttons. Tap the last one,
+        <strong> View More</strong>.
       </GuideStep>
-      <GuideStep n={4} figure={<IosShareSheetExpanded />}>
+      <GuideStep n={4} figure={<ChromeShareList />}>
         A longer list appears. Scroll down it until you see <strong>Add to Home Screen</strong>,
         and tap that.
       </GuideStep>
@@ -276,7 +361,8 @@ function IosGuide() {
         Done. There is now a <strong>Pressure</strong> icon on your home screen. From now on, open
         it from there, like any other app.
       </GuideStep>
-    </Guide>
+      </Guide>
+    </>
   );
 }
 

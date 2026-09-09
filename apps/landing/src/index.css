@@ -100,6 +100,7 @@ a { color: var(--accent-dark); }
 section { padding: 44px 0; }
 section + section { border-top: 1px solid var(--border); }
 section .wrap { display: grid; gap: 22px; }
+section .wrap > .switch { margin-top: -6px; }
 .muted { color: var(--text-muted); }
 
 .steps { display: grid; gap: 18px; padding: 0; margin: 0; list-style: none; }
@@ -145,6 +146,28 @@ section .wrap { display: grid; gap: 22px; }
   box-shadow: 0 1px 4px rgba(20, 24, 31, 0.12);
 }
 
+/* The line above the steps that says which browser these are for, and offers
+   the other one. A button rather than a link, because it changes what is on
+   the page rather than going anywhere. */
+.switch {
+  color: var(--text-muted);
+  font-size: 18px;
+}
+.switch button {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  text-align: left;
+}
+
 .guide { display: grid; gap: 26px; padding: 0; margin: 0; list-style: none; }
 .guide li {
   display: grid;
@@ -171,13 +194,18 @@ section .wrap { display: grid; gap: 22px; }
 }
 .guide strong { font-weight: 700; }
 
+/* A symbol printed inside a sentence, sitting on the text's own baseline. */
+.glyph {
+  display: inline-block;
+  vertical-align: -5px;
+  margin: 0 1px;
+}
+
 .note {
   padding: 18px 20px;
   border-radius: var(--radius);
   background: var(--accent-soft);
 }
-
-/* ---- Questions ----------------------------------------------------------- */
 
 /* ---- Questions ----------------------------------------------------------- */
 
