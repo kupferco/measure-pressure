@@ -330,6 +330,44 @@ export function SafariShareList() {
  * a screenshot, different enough to send someone hunting for the wrong words.
  */
 
+/**
+ * Chrome hides nothing: the Share button sits at the right-hand end of the
+ * address bar itself, so this is one tap where Safari needs two. Drawn from a
+ * photograph, like the rest - Chrome's toolbar is two rows, the address on top
+ * and the navigation buttons underneath, which is worth showing because "at the
+ * bottom" covers both of them.
+ */
+export function ChromeShareButton() {
+  return (
+    <Phone label="Chrome, with the Share button at the right of the address bar circled in red">
+      <AppScreen top={40} bottom={376} />
+      <rect x="10" y="376" width={W - 20} height="94" fill="#4b4b50" />
+      {/* The address bar, with the share button living inside it. */}
+      <rect x="22" y="386" width={W - 44} height="36" rx="18" fill="#6c6c72" />
+      <path d="M42 398 l3 6 l6 3 l-6 3 l-3 6 l-3 -6 l-6 -3 l6 -3 z" fill="#e8e8ea" />
+      <text x="150" y="408" textAnchor="middle" fill="#ffffff" fontSize="11">
+        measure-pressure-app.web.app
+      </text>
+      <ShareGlyph cx={276} cy={399} color="#ffffff" />
+      {/* Back, forward, new tab, the tab count, and the menu. */}
+      <g stroke="#c9c9ce" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M60 446 h-18 M48 440 l-6 6 l6 6" />
+        <path d="M100 446 h18 M112 440 l6 6 l-6 6" />
+        <circle cx="160" cy="446" r="13" />
+        <path d="M160 439 v14 M153 446 h14" />
+        <rect x="204" y="434" width="24" height="24" rx="5" />
+      </g>
+      <text x="216" y="451" textAnchor="middle" fill="#c9c9ce" fontSize="11">42</text>
+      <g fill="#c9c9ce">
+        <circle cx="266" cy="446" r="2.6" />
+        <circle cx="276" cy="446" r="2.6" />
+        <circle cx="286" cy="446" r="2.6" />
+      </g>
+      <Ring cx={276} cy={402} r={24} />
+    </Phone>
+  );
+}
+
 export function ChromeShareSheet() {
   const actions: Array<[number, string, string]> = [
     [46, 'Copy', ''],

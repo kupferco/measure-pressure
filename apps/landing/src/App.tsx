@@ -4,6 +4,7 @@ import {
   AndroidHomeScreen,
   AndroidMenu,
   AndroidMenuButton,
+  ChromeShareButton,
   ChromeShareList,
   ChromeShareSheet,
   IosConfirmAdd,
@@ -341,10 +342,10 @@ function ChromeGuide({ onUseSafari }: { onUseSafari: () => void }) {
           Open Measure Pressure
         </a>
       </GuideStep>
-      <GuideStep n={2}>
-        Open Chrome's menu and tap <strong>Share</strong>. Depending on your phone, that is
-        either three dots or the Share button itself <ShareSymbol />, a square with an arrow
-        coming out of the top.
+      <GuideStep n={2} figure={<ChromeShareButton />}>
+        At the bottom of the screen, at the right-hand end of the bar with the address in it,
+        tap the <strong>Share</strong> button <ShareSymbol /> - a square with an arrow coming
+        out of the top.
       </GuideStep>
       <GuideStep n={3} figure={<ChromeShareSheet />}>
         A panel slides up. Near the bottom is a row of round grey buttons. Tap the last one,
