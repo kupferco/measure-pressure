@@ -3,7 +3,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Reading, Summary } from '@mp/shared';
-import { BP_CATEGORY_LABEL, classify, DEFAULT_RANGE, describeWindow, rangeDays, withinRange, type RangeId } from '@mp/shared';
+import {
+  BP_CATEGORIES,
+  BP_CATEGORY_LABEL,
+  BP_CATEGORY_RANGE,
+  classify,
+  DEFAULT_RANGE,
+  describeWindow,
+  rangeDays,
+  withinRange,
+  type BpCategory,
+  type RangeId,
+} from '@mp/shared';
 import { RangeTabs } from '../../src/components/RangeTabs';
 import { TimeOfDayTable } from '../../src/components/TimeOfDayTable';
 import {
@@ -101,15 +112,7 @@ export default function ReportsScreen() {
 
             <TimeOfDayTable buckets={summary.byTimeOfDay} />
 
-            <Card>
-              <Heading>How the readings fall</Heading>
-              {summary.categoryBreakdown.map((entry) => (
-                <View key={entry.category} style={styles.row}>
-                  <Body>{entry.category}</Body>
-                  <Caption>{entry.count}</Caption>
-                </View>
-              ))}
-            </Card>
+            <CategoryBreakdown breakdown={summary.categoryBreakdown} />
 
             <Pressable onPress={() => router.push('/insights')}>
               <Card>
@@ -191,6 +194,42 @@ export function SittingRow({ readings }: { readings: Reading[] }) {
   );
 }
 
+/**
+ * The breakdown and the legend in one card, because they answer each other: the
+ * colour beside a count is the same colour as the bar on that reading in the log.
+ *
+ * Listed in severity order, and every band shown even at a count of nought - a
+ * legend with rows missing cannot explain a colour you are looking at. Crisis is
+ * the exception: it is a call-an-ambulance number, not something to leave sitting
+ * on the screen every day.
+ */
+function CategoryBreakdown({ breakdown }: { breakdown: { category: string; count: number }[] }) {
+  // The API sends the written label rather than the key, so count them by label.
+  const counts = new Map(breakdown.map((entry) => [entry.category, entry.count]));
+  const countOf = (category: BpCategory) => counts.get(BP_CATEGORY_LABEL[category]) ?? 0;
+
+  const shown = BP_CATEGORIES.filter((category) => category !== 'crisis' || countOf(category) > 0);
+
+  return (
+    <Card>
+      <Heading>How the readings fall</Heading>
+      {shown.map((category) => {
+        const count = countOf(category);
+        return (
+          <View key={category} style={styles.categoryRow}>
+            <View style={[styles.swatch, { backgroundColor: categoryColors[category] }]} />
+            <View style={{ flex: 1 }}>
+              <Body>{BP_CATEGORY_LABEL[category]}</Body>
+              <Caption>{BP_CATEGORY_RANGE[category]}</Caption>
+            </View>
+            <Caption style={count === 0 ? { color: colors.textFaint } : undefined}>{count}</Caption>
+          </View>
+        );
+      })}
+    </Card>
+  );
+}
+
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <View style={styles.stat}>
@@ -213,7 +252,9 @@ export function formatWhen(iso: string): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, maxWidth: 720, width: '100%', alignSelf: 'center' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 2 },
+  /** Wide enough to read as a colour rather than a dot, and the same shape as the log's bar. */
+  swatch: { width: 6, height: 34, borderRadius: 3 },
   statRow: { flexDirection: 'row', gap: spacing.sm },
   stat: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, gap: 2 },
   readingRow: {

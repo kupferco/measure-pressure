@@ -27,6 +27,28 @@ export const BP_CATEGORY_LABEL: Record<BpCategory, string> = {
   crisis: 'Hypertensive crisis',
 };
 
+/** Every category, calmest first. The order to list them in, and the order of the colour ramp. */
+export const BP_CATEGORIES: readonly BpCategory[] = [
+  'normal',
+  'elevated',
+  'hypertension_1',
+  'hypertension_2',
+  'crisis',
+] as const;
+
+/**
+ * The thresholds in words, for a legend. Kept here, beside classify(), because a
+ * legend that disagrees with the rule it describes is worse than no legend: change
+ * one and you must change the other.
+ */
+export const BP_CATEGORY_RANGE: Record<BpCategory, string> = {
+  normal: 'Under 120 and under 80',
+  elevated: '120 to 129, and under 80',
+  hypertension_1: '130 to 139, or 80 to 89',
+  hypertension_2: '140 or more, or 90 or more',
+  crisis: 'Over 180, or over 120',
+};
+
 /** Colour-blind-safe ramp, ordered from calm to alarming. Shared by web and mobile. */
 export const BP_CATEGORY_COLOR: Record<BpCategory, string> = {
   normal: '#1a7f5a',
