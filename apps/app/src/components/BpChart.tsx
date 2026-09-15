@@ -4,9 +4,13 @@ import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { colors, radius, seriesColors, spacing, type } from '../lib/theme';
 
 export interface ChartPoint {
+  id: string;
   measuredAt: string;
   systolic: number;
   diastolic: number;
+  pulse: number | null;
+  tags: string[];
+  note: string | null;
 }
 
 const PADDING = { top: 16, right: 44, bottom: 26, left: 34 };
@@ -106,8 +110,7 @@ export function BpChart({ points, width }: { points: ChartPoint[]; width: number
         onMoveShouldSetResponder={() => true}
         onResponderGrant={(event) => handleTouch(event.nativeEvent.locationX)}
         onResponderMove={(event) => handleTouch(event.nativeEvent.locationX)}
-        onResponderRelease={() => setSelected(null)}
-        onResponderTerminate={() => setSelected(null)}
+        onResponderRelease={(event) => handleTouch(event.nativeEvent.locationX)}
       >
       <Svg width={width} height={HEIGHT}>
         {gridValues.map((value) => (
@@ -195,6 +198,27 @@ export function BpChart({ points, width }: { points: ChartPoint[]; width: number
       </Svg>
       </View>
 
+      {active ? (
+        <View style={styles.detail}>
+          <Text style={[type.caption, { color: colors.textMuted }]}>Details</Text>
+          <Text style={[type.body, { color: colors.text }]}>
+            {new Date(active.measuredAt).toLocaleString(undefined, {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+            {'  '}{active.systolic}/{active.diastolic}
+            {active.pulse !== null ? `  pulse ${active.pulse}` : ''}
+          </Text>
+          {active.tags.length > 0 ? (
+            <Text style={[type.caption, { color: colors.textMuted }]}>Tags: {active.tags.join(', ')}</Text>
+          ) : null}
+          {active.note ? <Text style={[type.body, { color: colors.text }]}>{active.note}</Text> : null}
+        </View>
+      ) : null}
+
       <View style={styles.legend}>
         <LegendItem color={seriesColors.systolic} label="Systolic" />
         <LegendItem color={seriesColors.diastolic} label="Diastolic" />
@@ -233,4 +257,11 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   swatch: { width: 10, height: 10, borderRadius: 2 },
+  detail: {
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+  },
 });

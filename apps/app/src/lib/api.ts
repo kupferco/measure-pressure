@@ -179,6 +179,8 @@ export const api = {
         diastolic: number;
         pulse: number | null;
         category: string;
+        tags: string[];
+        note: string | null;
       }[];
       daily: { day: string; systolic: number; diastolic: number; count: number }[];
     }>(`/reports/series?${reportQuery(tz)}`),

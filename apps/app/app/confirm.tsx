@@ -13,6 +13,7 @@ import { Body, Button, Caption, Card, ErrorNote, Label, Loading, Screen } from '
 import { WhenSheet, describeDay } from '../src/components/WhenSheet';
 import { api } from '../src/lib/api';
 import { categoryColors, colors, radius, spacing, type } from '../src/lib/theme';
+import { loadReadingContext, saveReadingContext } from '../src/lib/session';
 
 /**
  * Confirm and save.
@@ -43,6 +44,18 @@ export default function ConfirmScreen() {
   const [whenOpen, setWhenOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadReadingContext()
+      .then((context) => {
+        if (!context) return;
+        setSelectedTags(context.tagIds);
+        setNote(context.note);
+      })
+      .catch(() => {
+        // Reusing context is helpful, but never blocks a new reading.
+      });
+  }, []);
 
   /**
    * Reload the tags every time this screen comes back into view, not once when it
@@ -148,6 +161,7 @@ export default function ConfirmScreen() {
         source: scan ? 'photo' : 'manual',
         scanId: scan?.scanId ?? null,
       });
+      await saveReadingContext({ tagIds: selectedTags, note: note.trim(), savedAt: Date.now() });
       router.replace('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save that reading.');

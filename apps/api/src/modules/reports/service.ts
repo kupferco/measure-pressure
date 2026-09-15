@@ -18,6 +18,7 @@ interface ReportRow {
   diastolic: number;
   pulse: number | null;
   measured_at: Date;
+  note: string | null;
   tag_ids: string[] | null;
   tag_labels: string[] | null;
 }
@@ -44,7 +45,7 @@ async function fetchReadings(actor: User, params: ReportQuery, action: string) {
   }
 
   const { rows } = await query<ReportRow>(
-    `select r.id, r.session_id, r.systolic, r.diastolic, r.pulse, r.measured_at,
+    `select r.id, r.session_id, r.systolic, r.diastolic, r.pulse, r.measured_at, r.note,
             array_remove(array_agg(t.id), null) as tag_ids,
             array_remove(array_agg(t.label), null) as tag_labels
      from readings r
@@ -101,6 +102,7 @@ function collapseSessions(rows: readonly ReportRow[]): ReportRow[] {
       diastolic: round1(mean(group.map((r) => r.diastolic))),
       pulse: pulses.length > 0 ? round1(mean(pulses)) : null,
       measured_at: first.measured_at,
+      note: [...new Set(group.map((r) => r.note).filter((note): note is string => Boolean(note)))].join('\n') || null,
       tag_ids: [...tagIds.keys()],
       tag_labels: [...tagIds.values()],
     } satisfies ReportRow;
@@ -302,6 +304,8 @@ export async function buildSeries(actor: User, params: ReportQuery) {
       diastolic: r.diastolic,
       pulse: r.pulse,
       category: classify(r.systolic, r.diastolic),
+      tags: r.tag_labels ?? [],
+      note: r.note,
     })),
     daily: [...byDay.entries()]
       .map(([day, values]) => ({
