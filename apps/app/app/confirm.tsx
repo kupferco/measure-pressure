@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Posture, ScanResult, Tag } from '@mp/shared';
 import {
@@ -35,7 +35,7 @@ export default function ConfirmScreen() {
   const [noteFocused, setNoteFocused] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showContext, setShowContext] = useState(false);
+  const [showContext, setShowContext] = useState(true);
   const [minutesAgo, setMinutesAgo] = useState(0);
   // Set only by the custom sheet. While it is null the presets above decide the
   // time, so choosing a preset is simply clearing this back to null.
@@ -44,12 +44,47 @@ export default function ConfirmScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .listTags()
-      .then(({ tags }) => setTags(tags))
-      .catch(() => setTags([]));
-  }, []);
+  /**
+   * Reload the tags every time this screen comes back into view, not once when it
+   * mounts.
+   *
+   * Editing tags means pushing /tags on top of this screen, which leaves this one
+   * mounted underneath - so a list fetched on mount still shows the tags as they
+   * were before a new one was created. The only way to get a fresh list was to
+   * leave and come back, and leaving this screen throws away the scan: the
+   * numbers Vision read are held in this component's state, and the photo is
+   * gone. Someone who realises mid-entry that they want a "gym" tag would have
+   * had to choose between the tag and the reading.
+   *
+   * Refetching on focus rather than remounting keeps everything already typed -
+   * the numbers, the note, the position, the time - because none of that state is
+   * touched here.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      api
+        .listTags()
+        .then(({ tags }) => {
+          if (cancelled) return;
+          setTags(tags);
+          // A tag deleted while we were away must not stay selected, or saving
+          // would send an id the server no longer accepts.
+          const live = new Set(tags.map((tag) => tag.id));
+          setSelectedTags((current) => {
+            const kept = current.filter((id) => live.has(id));
+            return kept.length === current.length ? current : kept;
+          });
+        })
+        .catch(() => {
+          // Leave whatever list is already on screen. Losing the tags because a
+          // refresh failed would be worse than showing a slightly stale set.
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     if (!uri) return;
@@ -218,6 +253,52 @@ export default function ConfirmScreen() {
         }}
       />
 
+      {/*
+        Tags first, then the note.
+
+        Tapping two chips is a second's work and most sittings need nothing more;
+        the note is the slower thing, and the keyboard it opens covers whatever is
+        below it. Putting the quick, tappable thing above the thing that summons a
+        keyboard means the usual case is finished without ever scrolling back.
+
+        Shown open rather than behind a toggle: a tag nobody can see is a tag
+        nobody applies, and the analysis is only as good as what gets ticked.
+      */}
+      <View style={{ gap: spacing.sm }}>
+        {/* Label and toggle on one row: Label uppercases its text, and running
+            the two together came out as "TAGS - HIDE", which reads like a
+            heading rather than something to press. */}
+        <Pressable
+          onPress={() => setShowContext((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={showContext ? 'Hide tags' : 'Show tags'}
+          style={styles.tagsHeader}
+        >
+          <Label>Tags</Label>
+          <Caption>{showContext ? 'Hide' : 'Show'}</Caption>
+        </Pressable>
+
+        {showContext ? (
+          <View style={styles.chipRow}>
+            {tags.map((tag) => (
+              <Chip
+                key={tag.id}
+                label={tag.label}
+                selected={selectedTags.includes(tag.id)}
+                onPress={() =>
+                  setSelectedTags((current) =>
+                    current.includes(tag.id)
+                      ? current.filter((id) => id !== tag.id)
+                      : [...current, tag.id],
+                  )
+                }
+              />
+            ))}
+            <Chip label="Edit tags…" selected={false} onPress={() => router.push('/tags')} />
+          </View>
+        ) : null}
+      </View>
+
       <View style={{ gap: spacing.sm }}>
         <Label>What was going on</Label>
         <TextInput
@@ -231,35 +312,6 @@ export default function ConfirmScreen() {
           style={[styles.noteInput, noteFocused && { borderColor: colors.accent }]}
         />
       </View>
-
-      {/*
-        Tags are collapsed by default. The note is what people actually want to
-        write; tags are for the analysis, and should never stand between a reading
-        and being saved.
-      */}
-      <Pressable onPress={() => setShowContext((v) => !v)} accessibilityRole="button">
-        <Caption>{showContext ? '− Hide tags' : '+ Add tags'}</Caption>
-      </Pressable>
-
-      {showContext ? (
-        <View style={styles.chipRow}>
-          {tags.map((tag) => (
-            <Chip
-              key={tag.id}
-              label={tag.label}
-              selected={selectedTags.includes(tag.id)}
-              onPress={() =>
-                setSelectedTags((current) =>
-                  current.includes(tag.id)
-                    ? current.filter((id) => id !== tag.id)
-                    : [...current, tag.id],
-                )
-              }
-            />
-          ))}
-          <Chip label="Edit tags…" selected={false} onPress={() => router.push('/tags')} />
-        </View>
-      ) : null}
 
       <ErrorNote message={error} />
 
@@ -380,6 +432,11 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.md,
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
+  tagsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     minHeight: 40,
