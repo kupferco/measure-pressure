@@ -7,6 +7,7 @@ export interface Subject {
   userId: string;
   /** False when a doctor is viewing a patient - sharing grants read access only. */
   canWrite: boolean;
+  bpStandard: 'american' | 'european';
 }
 
 /**
@@ -22,12 +23,13 @@ export async function resolveSubject(
   action: string,
 ): Promise<Subject> {
   if (!patientId || patientId === actor.id) {
-    return { userId: actor.id, canWrite: true };
+    return { userId: actor.id, canWrite: true, bpStandard: actor.bpStandard };
   }
 
-  const { rows } = await query<{ id: string }>(
-    `select id from shares
-     where patient_id = $1 and doctor_id = $2 and status = 'active'`,
+  const { rows } = await query<{ id: string; bp_standard: 'american' | 'european' }>(
+    `select s.id, u.bp_standard
+     from shares s join users u on u.id = s.patient_id
+     where s.patient_id = $1 and s.doctor_id = $2 and s.status = 'active'`,
     [patientId, actor.id],
   );
   if (!rows[0]) {
@@ -41,7 +43,7 @@ export async function resolveSubject(
     [actor.id, patientId, action, JSON.stringify({ shareId: rows[0].id })],
   );
 
-  return { userId: patientId, canWrite: false };
+  return { userId: patientId, canWrite: false, bpStandard: rows[0]!.bp_standard };
 }
 
 export function requireWrite(subject: Subject): void {

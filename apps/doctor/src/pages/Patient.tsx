@@ -148,7 +148,7 @@ export function PatientPage() {
 
           <div className="card">
             <h2 style={{ marginBottom: 12 }}>Diary</h2>
-            <DiaryTable rows={diary} />
+            <DiaryTable rows={diary} standard={summary.standard} />
             <div className="legend" style={{ marginTop: 14 }}>
               {(['normal', 'elevated', 'hypertension_1', 'hypertension_2', 'crisis'] as const).map(
                 (category) => (
@@ -160,7 +160,7 @@ export function PatientPage() {
             </div>
             <p className="small faint" style={{ marginTop: 10 }}>
               Each cell averages the measurements taken in that part of the day; ×n says how many.
-              Categories follow ACC/AHA thresholds.
+              Categories follow the patient's selected {summary.standard === 'american' ? 'ACC/AHA' : 'European'} standard.
             </p>
           </div>
 

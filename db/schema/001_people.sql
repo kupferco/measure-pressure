@@ -24,7 +24,9 @@ create table users (
   -- Which screen the app opens on. Defaults to the camera, because the common
   -- case is open, shoot, done - but someone reviewing more than recording will
   -- want the dashboard instead.
-  start_on_camera boolean not null default true
+  start_on_camera boolean not null default true,
+  bp_standard   text not null default 'american'
+                 constraint users_bp_standard_check check (bp_standard in ('american', 'european'))
 );
 
 -- Passwordless login. Only hashes are stored, so a database leak does not hand

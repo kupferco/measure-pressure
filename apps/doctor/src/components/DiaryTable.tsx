@@ -1,4 +1,4 @@
-import { classify, BP_CATEGORY_LABEL } from '@mp/shared';
+import { classify, BP_CATEGORY_LABEL, type BpStandard } from '@mp/shared';
 import { SLOTS, SLOT_HOURS, SLOT_LABEL, type Cell, type DiaryRow } from '../lib/diary';
 
 /**
@@ -8,7 +8,7 @@ import { SLOTS, SLOT_HOURS, SLOT_LABEL, type Cell, type DiaryRow } from '../lib/
  * makes them do the grouping in their head during a ten-minute appointment; a
  * grid makes "his mornings are always high" visible at a glance.
  */
-export function DiaryTable({ rows }: { rows: DiaryRow[] }) {
+export function DiaryTable({ rows, standard }: { rows: DiaryRow[]; standard: BpStandard }) {
   if (rows.length === 0) {
     return <p className="muted">No readings in this period.</p>;
   }
@@ -35,7 +35,7 @@ export function DiaryTable({ rows }: { rows: DiaryRow[] }) {
               </th>
               {SLOTS.map((slot) => (
                 <td key={slot}>
-                  <SlotCell cell={row.slots[slot]} />
+                  <SlotCell cell={row.slots[slot]} standard={standard} />
                 </td>
               ))}
             </tr>
@@ -46,11 +46,11 @@ export function DiaryTable({ rows }: { rows: DiaryRow[] }) {
   );
 }
 
-function SlotCell({ cell }: { cell: Cell | undefined }) {
+function SlotCell({ cell, standard }: { cell: Cell | undefined; standard: BpStandard }) {
   // An empty slot is information too - it says they did not measure then.
   if (!cell) return <span className="faint">—</span>;
 
-  const category = classify(cell.systolic, cell.diastolic);
+  const category = classify(cell.systolic, cell.diastolic, standard);
   const title = [
     BP_CATEGORY_LABEL[category],
     `${cell.readings} ${cell.readings === 1 ? 'measurement' : 'measurements'}`,

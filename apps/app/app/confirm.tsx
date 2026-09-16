@@ -12,6 +12,7 @@ import {
 import { Body, Button, Caption, Card, ErrorNote, Label, Loading, Screen } from '../src/components/ui';
 import { WhenSheet, describeDay } from '../src/components/WhenSheet';
 import { api } from '../src/lib/api';
+import { useAuth } from '../src/lib/auth';
 import { categoryColors, colors, radius, spacing, type } from '../src/lib/theme';
 import { loadReadingContext, saveReadingContext } from '../src/lib/session';
 
@@ -44,6 +45,7 @@ export default function ConfirmScreen() {
   const [whenOpen, setWhenOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadReadingContext()
@@ -129,7 +131,7 @@ export default function ConfirmScreen() {
   };
   const complete = Number.isFinite(parsed.systolic) && Number.isFinite(parsed.diastolic);
   const problems = complete ? validateReading(parsed) : [];
-  const category = complete && problems.length === 0 ? classify(parsed.systolic, parsed.diastolic) : null;
+  const category = complete && problems.length === 0 ? classify(parsed.systolic, parsed.diastolic, user?.bpStandard ?? 'american') : null;
 
   const measuredAt = useMemo(
     () => customAt ?? new Date(Date.now() - minutesAgo * 60_000),

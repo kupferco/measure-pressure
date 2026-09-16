@@ -15,6 +15,7 @@ interface UserRow {
   email: string;
   name: string | null;
   start_on_camera: boolean;
+  bp_standard: 'american' | 'european';
   created_at: Date;
 }
 
@@ -24,6 +25,7 @@ export function toUser(row: UserRow): User {
     email: row.email,
     name: row.name,
     startOnCamera: row.start_on_camera,
+    bpStandard: row.bp_standard,
     createdAt: row.created_at.toISOString(),
   };
 }
@@ -58,7 +60,7 @@ async function findOrCreateUser(
   email: string,
 ): Promise<{ user: UserRow; isNew: boolean }> {
   const existing = await client.query<UserRow>(
-    'select id, email, name, start_on_camera, created_at from users where email = $1',
+    'select id, email, name, start_on_camera, bp_standard, created_at from users where email = $1',
     [email],
   );
   if (existing.rows[0]) return { user: existing.rows[0], isNew: false };
@@ -66,7 +68,7 @@ async function findOrCreateUser(
   // The name is set later, from the profile screen. An account is its email.
   const created = await client.query<UserRow>(
     `insert into users (email) values ($1)
-     returning id, email, name, start_on_camera, created_at`,
+    returning id, email, name, start_on_camera, bp_standard, created_at`,
     [email],
   );
   const user = created.rows[0]!;
@@ -200,7 +202,7 @@ async function finishLogin(
 ): Promise<{ user: User; sessionToken: string }> {
   const sessionToken = await createSession(client, userId, userAgent);
   const userRow = await client.query<UserRow>(
-    'select id, email, name, start_on_camera, created_at from users where id = $1',
+    'select id, email, name, start_on_camera, bp_standard, created_at from users where id = $1',
     [userId],
   );
   return { user: toUser(userRow.rows[0]!), sessionToken };
@@ -218,7 +220,7 @@ export async function resolveSession(sessionToken: string): Promise<User | null>
        where token_hash = $1 and expires_at > now()
        returning user_id
      )
-     select u.id, u.email, u.name, u.start_on_camera, u.created_at
+    select u.id, u.email, u.name, u.start_on_camera, u.bp_standard, u.created_at
      from touched join users u on u.id = touched.user_id`,
     [hashToken(sessionToken), config.SESSION_TTL_DAYS],
   );
@@ -232,7 +234,7 @@ export async function logout(sessionToken: string): Promise<void> {
 
 export async function updateProfile(
   userId: string,
-  input: { name?: string; startOnCamera?: boolean },
+  input: { name?: string; startOnCamera?: boolean; bpStandard?: 'american' | 'european' },
 ): Promise<User> {
   const sets: string[] = [];
   const values: unknown[] = [userId];
@@ -244,11 +246,15 @@ export async function updateProfile(
     values.push(input.startOnCamera);
     sets.push(`start_on_camera = $${values.length}`);
   }
+  if (input.bpStandard !== undefined) {
+    values.push(input.bpStandard);
+    sets.push(`bp_standard = $${values.length}`);
+  }
   if (sets.length === 0) throw ApiError.badRequest('Nothing to update.');
 
   const { rows } = await query<UserRow>(
     `update users set ${sets.join(', ')} where id = $1
-     returning id, email, name, start_on_camera, created_at`,
+    returning id, email, name, start_on_camera, bp_standard, created_at`,
     values,
   );
   if (!rows[0]) throw ApiError.notFound('User not found');

@@ -56,7 +56,7 @@ async function fetchReadings(actor: User, params: ReportQuery, action: string) {
      order by r.measured_at`,
     values,
   );
-  return collapseSessions(rows);
+  return { rows: collapseSessions(rows), standard: subject.bpStandard };
 }
 
 /**
@@ -135,10 +135,11 @@ function bucketFor(hour: number): TimeBucket {
 }
 
 export async function buildSummary(actor: User, params: ReportQuery): Promise<Summary> {
-  const rows = await fetchReadings(actor, params, 'view_summary');
+  const { rows, standard } = await fetchReadings(actor, params, 'view_summary');
 
   if (rows.length === 0) {
     return {
+      standard,
       readingCount: 0,
       from: null,
       to: null,
@@ -163,7 +164,7 @@ export async function buildSummary(actor: User, params: ReportQuery): Promise<Su
 
   const categories = new Map<string, number>();
   for (const row of rows) {
-    const label = BP_CATEGORY_LABEL[classify(row.systolic, row.diastolic)];
+    const label = BP_CATEGORY_LABEL[classify(row.systolic, row.diastolic, standard)];
     categories.set(label, (categories.get(label) ?? 0) + 1);
   }
 
@@ -179,6 +180,7 @@ export async function buildSummary(actor: User, params: ReportQuery): Promise<Su
   );
 
   return {
+    standard,
     readingCount: rows.length,
     from: rows[0]!.measured_at.toISOString(),
     to: rows[rows.length - 1]!.measured_at.toISOString(),
@@ -233,7 +235,7 @@ const SIGNIFICANCE = 0.05;
  * report presents these as prompts for a conversation, not findings.
  */
 export async function buildInsights(actor: User, params: ReportQuery): Promise<Insight[]> {
-  const rows = await fetchReadings(actor, params, 'view_insights');
+  const { rows } = await fetchReadings(actor, params, 'view_insights');
   if (rows.length < MIN_TAGGED_READINGS * 2) return [];
 
   const labelById = new Map<string, string>();
@@ -285,7 +287,7 @@ export async function buildInsights(actor: User, params: ReportQuery): Promise<I
 
 /** The chart series: one point per reading, plus a daily mean for a calmer line. */
 export async function buildSeries(actor: User, params: ReportQuery) {
-  const rows = await fetchReadings(actor, params, 'view_series');
+  const { rows, standard } = await fetchReadings(actor, params, 'view_series');
 
   const byDay = new Map<string, { systolic: number[]; diastolic: number[] }>();
   for (const row of rows) {
@@ -303,7 +305,7 @@ export async function buildSeries(actor: User, params: ReportQuery) {
       systolic: r.systolic,
       diastolic: r.diastolic,
       pulse: r.pulse,
-      category: classify(r.systolic, r.diastolic),
+      category: classify(r.systolic, r.diastolic, standard),
       tags: r.tag_labels ?? [],
       note: r.note,
     })),

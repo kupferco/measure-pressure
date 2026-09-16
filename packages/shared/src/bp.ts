@@ -1,8 +1,8 @@
 /**
  * Blood-pressure domain rules shared by every client and the API.
  *
- * NOTE: the categories below follow the ACC/AHA 2017 thresholds. They are here to
- * colour a chart and start a conversation with a doctor - never to diagnose.
+ * Categories are display guidance only. They help colour a chart and start a
+ * conversation with a doctor; they never diagnose.
  */
 
 /** Widest values we will accept from OCR or a human. Anything outside is a typo or a misread. */
@@ -18,6 +18,9 @@ export type BpCategory =
   | 'hypertension_1'
   | 'hypertension_2'
   | 'crisis';
+
+export const BP_STANDARDS = ['american', 'european'] as const;
+export type BpStandard = (typeof BP_STANDARDS)[number];
 
 export const BP_CATEGORY_LABEL: Record<BpCategory, string> = {
   normal: 'Normal',
@@ -41,13 +44,25 @@ export const BP_CATEGORIES: readonly BpCategory[] = [
  * legend that disagrees with the rule it describes is worse than no legend: change
  * one and you must change the other.
  */
-export const BP_CATEGORY_RANGE: Record<BpCategory, string> = {
+const AMERICAN_RANGES: Record<BpCategory, string> = {
   normal: 'Under 120 and under 80',
   elevated: '120 to 129, and under 80',
   hypertension_1: '130 to 139, or 80 to 89',
   hypertension_2: '140 or more, or 90 or more',
   crisis: 'Over 180, or over 120',
 };
+
+const EUROPEAN_RANGES: Record<BpCategory, string> = {
+  normal: 'Under 130 and under 85',
+  elevated: '130 to 139, or 85 to 89',
+  hypertension_1: '140 to 159, or 90 to 99',
+  hypertension_2: '160 to 179, or 100 to 109',
+  crisis: '180 or more, or 110 or more',
+};
+
+export function categoryRanges(standard: BpStandard): Record<BpCategory, string> {
+  return standard === 'european' ? EUROPEAN_RANGES : AMERICAN_RANGES;
+}
 
 /** Colour-blind-safe ramp, ordered from calm to alarming. Shared by web and mobile. */
 export const BP_CATEGORY_COLOR: Record<BpCategory, string> = {
@@ -58,7 +73,18 @@ export const BP_CATEGORY_COLOR: Record<BpCategory, string> = {
   crisis: '#7b1d13',
 };
 
-export function classify(systolic: number, diastolic: number): BpCategory {
+export function classify(
+  systolic: number,
+  diastolic: number,
+  standard: BpStandard = 'american',
+): BpCategory {
+  if (standard === 'european') {
+    if (systolic >= 180 || diastolic >= 110) return 'crisis';
+    if (systolic >= 160 || diastolic >= 100) return 'hypertension_2';
+    if (systolic >= 140 || diastolic >= 90) return 'hypertension_1';
+    if (systolic >= 130 || diastolic >= 85) return 'elevated';
+    return 'normal';
+  }
   if (systolic > 180 || diastolic > 120) return 'crisis';
   if (systolic >= 140 || diastolic >= 90) return 'hypertension_2';
   if (systolic >= 130 || diastolic >= 80) return 'hypertension_1';

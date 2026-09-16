@@ -11,6 +11,7 @@ import type {
   Tag,
   UpdateTagInput,
   User,
+  BpStandard,
 } from '@mp/shared';
 import { loadToken } from './session';
 
@@ -121,7 +122,7 @@ export const api = {
       readingCount: number;
       pendingInvitations: number;
     }>('/auth/me'),
-  updateProfile: (input: { name?: string; startOnCamera?: boolean }) =>
+  updateProfile: (input: { name?: string; startOnCamera?: boolean; bpStandard?: BpStandard }) =>
     request<{ user: User }>('/auth/me', { method: 'PATCH', body: input }),
   logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
 

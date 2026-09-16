@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PLAUSIBLE } from './bp.js';
+import { BP_STANDARDS, PLAUSIBLE } from './bp.js';
 import { ARMS, POSTURES, TAG_GROUPS } from './tags.js';
 
 export const emailSchema = z.string().trim().toLowerCase().email().max(320);
@@ -29,6 +29,7 @@ export const userSchema = z.object({
   name: z.string().nullable(),
   /** Which screen the app opens on. True is the camera. */
   startOnCamera: z.boolean(),
+  bpStandard: z.enum(BP_STANDARDS),
   createdAt: isoDateTimeSchema,
 });
 export type User = z.infer<typeof userSchema>;
@@ -98,6 +99,7 @@ export type UpdateReadingInput = z.infer<typeof updateReadingSchema>;
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   startOnCamera: z.boolean().optional(),
+  bpStandard: z.enum(BP_STANDARDS).optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
@@ -186,6 +188,7 @@ export const TIME_BUCKETS = ['morning', 'afternoon', 'evening', 'night'] as cons
 export type TimeBucket = (typeof TIME_BUCKETS)[number];
 
 export const summarySchema = z.object({
+  standard: z.enum(BP_STANDARDS),
   readingCount: z.number().int(),
   from: isoDateTimeSchema.nullable(),
   to: isoDateTimeSchema.nullable(),

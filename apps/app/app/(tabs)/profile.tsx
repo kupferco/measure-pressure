@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, StyleSheet, Switch, TextInput, View } from 'react-native';
+import type { BpStandard } from '@mp/shared';
+import { Alert, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { Body, Button, Caption, Card, ErrorNote, Heading, Label, Screen } from '../../src/components/ui';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth';
@@ -18,6 +19,7 @@ export default function ProfileScreen() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [startOnCamera, setStartOnCamera] = useState(user?.startOnCamera ?? true);
+  const [bpStandard, setBpStandard] = useState<BpStandard>(user?.bpStandard ?? 'american');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -46,6 +48,19 @@ export default function ProfileScreen() {
       await refresh();
     } catch (err) {
       setStartOnCamera(!next);
+      setError(err instanceof Error ? err.message : 'Could not save that preference.');
+    }
+  };
+
+  const setBloodPressureStandard = async (next: BpStandard) => {
+    const previous = bpStandard;
+    setBpStandard(next);
+    setError(null);
+    try {
+      await api.updateProfile({ bpStandard: next });
+      await refresh();
+    } catch (err) {
+      setBpStandard(previous);
       setError(err instanceof Error ? err.message : 'Could not save that preference.');
     }
   };
@@ -91,6 +106,27 @@ export default function ProfileScreen() {
         />
         <Caption>Shown to anyone you share your readings with.</Caption>
         <Button label={saved ? 'Saved' : 'Save name'} onPress={saveName} loading={busy} disabled={saved} />
+      </View>
+
+      <View style={{ gap: spacing.sm }}>
+        <View style={{ gap: 2 }}>
+          <Body>Blood-pressure standard</Body>
+          <Caption>Sets the categories shown in your reports.</Caption>
+        </View>
+        <View style={styles.standardRow}>
+          {(['american', 'european'] as const).map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => setBloodPressureStandard(option)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: bpStandard === option }}
+              style={[styles.standardOption, bpStandard === option && styles.standardOptionSelected]}
+            >
+              <Body>{option === 'american' ? 'American' : 'European'}</Body>
+              <Caption>{option === 'american' ? 'ACC/AHA' : 'ESC/ESH'}</Caption>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       {/*
@@ -182,6 +218,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
+  standardRow: { flexDirection: 'row', gap: spacing.sm },
+  standardOption: {
+    flex: 1,
+    gap: 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    padding: spacing.md,
+  },
+  standardOptionSelected: { borderColor: colors.accent, backgroundColor: colors.surfaceRaised },
   input: {
     ...type.body,
     color: colors.text,

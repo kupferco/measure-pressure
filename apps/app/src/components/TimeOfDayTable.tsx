@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { classify, type TimeBucket } from '@mp/shared';
+import { classify, type BpStandard, type TimeBucket } from '@mp/shared';
 import { Caption, Heading } from './ui';
 import { categoryColors, colors, radius, spacing, type } from '../lib/theme';
 
@@ -34,7 +34,7 @@ const ORDER: TimeBucket[] = ['morning', 'afternoon', 'evening', 'night'];
  * rather than a chart because four rows of numbers are easier to read out loud in
  * an appointment than four bars to squint at.
  */
-export function TimeOfDayTable({ buckets }: { buckets: readonly Bucket[] }) {
+export function TimeOfDayTable({ buckets, standard }: { buckets: readonly Bucket[]; standard: BpStandard }) {
   const present = ORDER.map((id) => buckets.find((b) => b.bucket === id)).filter(
     (b): b is Bucket => b !== undefined,
   );
@@ -51,7 +51,7 @@ export function TimeOfDayTable({ buckets }: { buckets: readonly Bucket[] }) {
       </View>
 
       {present.map((bucket) => {
-        const category = classify(bucket.systolic, bucket.diastolic);
+        const category = classify(bucket.systolic, bucket.diastolic, standard);
         return (
           <View key={bucket.bucket} style={styles.row}>
             <View style={styles.when}>

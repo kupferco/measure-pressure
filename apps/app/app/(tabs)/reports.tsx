@@ -6,7 +6,7 @@ import type { Reading, Summary } from '@mp/shared';
 import {
   BP_CATEGORIES,
   BP_CATEGORY_LABEL,
-  BP_CATEGORY_RANGE,
+  categoryRanges,
   classify,
   DEFAULT_RANGE,
   describeWindow,
@@ -28,6 +28,7 @@ import {
   Loading,
 } from '../../src/components/ui';
 import { api } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth';
 import { categoryColors, colors, radius, spacing, type } from '../../src/lib/theme';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
@@ -38,6 +39,8 @@ const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
  */
 export default function ReportsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const standard = user?.bpStandard ?? 'american';
 
   const [range, setRange] = useState<RangeId>(DEFAULT_RANGE);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -110,9 +113,9 @@ export default function ReportsScreen() {
               ) : null}
             </View>
 
-            <TimeOfDayTable buckets={summary.byTimeOfDay} />
+            <TimeOfDayTable buckets={summary.byTimeOfDay} standard={standard} />
 
-            <CategoryBreakdown breakdown={summary.categoryBreakdown} />
+            <CategoryBreakdown breakdown={summary.categoryBreakdown} standard={standard} />
 
             <Pressable onPress={() => router.push('/insights')}>
               <Card>
@@ -127,7 +130,7 @@ export default function ReportsScreen() {
             <View style={{ gap: spacing.sm }}>
               <Label>Log</Label>
               {sittings.map((sitting) => (
-                <SittingRow key={sitting.id} readings={sitting.readings} />
+                <SittingRow key={sitting.id} readings={sitting.readings} standard={standard} />
               ))}
             </View>
           </>
@@ -155,7 +158,7 @@ function groupIntoSittings(readings: Reading[]): Sitting[] {
 
 const format = (value: number) => (Number.isInteger(value) ? String(value) : value.toFixed(1));
 
-export function SittingRow({ readings }: { readings: Reading[] }) {
+export function SittingRow({ readings, standard }: { readings: Reading[]; standard: 'american' | 'european' }) {
   const average = (key: 'systolic' | 'diastolic') =>
     readings.reduce((sum, r) => sum + r[key], 0) / readings.length;
   const systolic = average('systolic');
@@ -168,7 +171,7 @@ export function SittingRow({ readings }: { readings: Reading[] }) {
   return (
     <View style={styles.readingRow}>
       <View
-        style={[styles.readingBar, { backgroundColor: categoryColors[classify(systolic, diastolic)] }]}
+        style={[styles.readingBar, { backgroundColor: categoryColors[classify(systolic, diastolic, standard)] }]}
       />
       <View style={{ flex: 1, gap: 2 }}>
         <Body>
@@ -203,9 +206,16 @@ export function SittingRow({ readings }: { readings: Reading[] }) {
  * the exception: it is a call-an-ambulance number, not something to leave sitting
  * on the screen every day.
  */
-function CategoryBreakdown({ breakdown }: { breakdown: { category: string; count: number }[] }) {
+function CategoryBreakdown({
+  breakdown,
+  standard,
+}: {
+  breakdown: { category: string; count: number }[];
+  standard: 'american' | 'european';
+}) {
   // The API sends the written label rather than the key, so count them by label.
   const counts = new Map(breakdown.map((entry) => [entry.category, entry.count]));
+  const ranges = categoryRanges(standard);
   const countOf = (category: BpCategory) => counts.get(BP_CATEGORY_LABEL[category]) ?? 0;
 
   const shown = BP_CATEGORIES.filter((category) => category !== 'crisis' || countOf(category) > 0);
@@ -220,7 +230,7 @@ function CategoryBreakdown({ breakdown }: { breakdown: { category: string; count
             <View style={[styles.swatch, { backgroundColor: categoryColors[category] }]} />
             <View style={{ flex: 1 }}>
               <Body>{BP_CATEGORY_LABEL[category]}</Body>
-              <Caption>{BP_CATEGORY_RANGE[category]}</Caption>
+              <Caption>{ranges[category]}</Caption>
             </View>
             <Caption style={count === 0 ? { color: colors.textFaint } : undefined}>{count}</Caption>
           </View>
