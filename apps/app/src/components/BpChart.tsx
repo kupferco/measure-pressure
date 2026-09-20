@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
-import { colors, radius, seriesColors, spacing, type } from '../lib/theme';
+import { BP_CATEGORY_LABEL, classify, type BpStandard } from '@mp/shared';
+import { categoryColors, colors, radius, seriesColors, spacing, type } from '../lib/theme';
 
 export interface ChartPoint {
   id: string;
@@ -25,7 +26,7 @@ const HEIGHT = 240;
  *
  * Touch anywhere to read off the nearest day.
  */
-export function BpChart({ points, width }: { points: ChartPoint[]; width: number }) {
+export function BpChart({ points, width, standard = 'american' }: { points: ChartPoint[]; width: number; standard?: BpStandard }) {
   const [selected, setSelected] = useState<number | null>(null);
 
   const plotWidth = Math.max(width - PADDING.left - PADDING.right, 1);
@@ -78,6 +79,7 @@ export function BpChart({ points, width }: { points: ChartPoint[]; width: number
 
   const { times, x, y, path, gridValues } = model;
   const active = selected !== null ? points[selected] : null;
+  const activeCategory = active ? classify(active.systolic, active.diastolic, standard) : null;
   const last = points[points.length - 1]!;
 
   const handleTouch = (locationX: number) => {
@@ -200,22 +202,54 @@ export function BpChart({ points, width }: { points: ChartPoint[]; width: number
 
       {active ? (
         <View style={styles.detail}>
-          <Text style={[type.caption, { color: colors.textMuted }]}>Details</Text>
-          <Text style={[type.body, { color: colors.text }]}>
-            {new Date(active.measuredAt).toLocaleString(undefined, {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-            {'  '}{active.systolic}/{active.diastolic}
-            {active.pulse !== null ? `  pulse ${active.pulse}` : ''}
-          </Text>
+          <View style={styles.detailHeader}>
+            <View style={styles.detailMeta}>
+              <Text style={[type.caption, { color: colors.textMuted }]}>Selected reading</Text>
+              <Text style={[type.body, { color: colors.text, fontWeight: '600' }]}>
+                {new Date(active.measuredAt).toLocaleString(undefined, {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </Text>
+            </View>
+
+            {activeCategory ? (
+              <View style={[styles.categoryTag, { backgroundColor: categoryColors[activeCategory] }]}>
+                <Text style={[type.caption, { color: colors.background, fontWeight: '700' }]}>
+                  {BP_CATEGORY_LABEL[activeCategory]}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.readingRow}>
+            <Text style={[type.reading, { color: colors.text, lineHeight: 48 }]}>
+              {active.systolic}/{active.diastolic}
+            </Text>
+            {active.pulse !== null ? (
+              <Text style={[type.caption, { color: colors.textMuted }]}>Pulse {active.pulse}</Text>
+            ) : null}
+          </View>
+
           {active.tags.length > 0 ? (
-            <Text style={[type.caption, { color: colors.textMuted }]}>Tags: {active.tags.join(', ')}</Text>
+            <View style={styles.tagRow}>
+              {active.tags.map((tag) => (
+                <View key={tag} style={styles.tagPill}>
+                  <Text style={[type.caption, { color: colors.textMuted }]}>{tag}</Text>
+                </View>
+              ))}
+            </View>
           ) : null}
-          {active.note ? <Text style={[type.body, { color: colors.text }]}>{active.note}</Text> : null}
+
+          {active.note ? (
+            <View style={styles.noteBox}>
+              <Text style={[type.caption, { color: colors.textMuted, marginBottom: 4 }]}>Note</Text>
+              <Text style={[type.body, { color: colors.text }]}>{active.note}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -258,10 +292,56 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   swatch: { width: 10, height: 10, borderRadius: 2 },
   detail: {
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginTop: spacing.sm,
     padding: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  detailMeta: {
+    gap: 2,
+    flexShrink: 1,
+  },
+  readingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  categoryTag: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    alignSelf: 'flex-start',
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  tagPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  noteBox: {
+    padding: spacing.sm,
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 });

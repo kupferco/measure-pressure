@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Reading, Summary } from '@mp/shared';
 import {
@@ -49,17 +49,24 @@ export default function ReportsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Switching standard or range twice in quick succession starts two requests, and
+  // they can finish in either order. Only the latest may land.
+  const latestRequest = useRef(0);
+
   const load = useCallback(async (id: RangeId) => {
+    const request = ++latestRequest.current;
     const from = new Date(Date.now() - rangeDays(id) * 86_400_000).toISOString();
     try {
       const [summaryResult, readingsResult] = await Promise.all([
         api.summary(timeZone, from),
         api.listReadings({ from, limit: 200 }),
       ]);
+      if (request !== latestRequest.current) return;
       setSummary(summaryResult.summary);
       setReadings(readingsResult.readings);
       setError(null);
     } catch (err) {
+      if (request !== latestRequest.current) return;
       setError(err instanceof Error ? err.message : 'Could not load your reports.');
     } finally {
       setLoading(false);
@@ -67,9 +74,11 @@ export default function ReportsScreen() {
     }
   }, []);
 
+  // The API counts categories under the saved standard, so changing it on Profile
+  // has to fetch the summary again - the labels alone would update, the counts not.
   useEffect(() => {
     load(range);
-  }, [load, range]);
+  }, [load, range, standard]);
 
   if (loading) return <Loading />;
 
@@ -115,7 +124,11 @@ export default function ReportsScreen() {
 
             <TimeOfDayTable buckets={summary.byTimeOfDay} standard={standard} />
 
-            <CategoryBreakdown breakdown={summary.categoryBreakdown} standard={standard} />
+            <CategoryBreakdown
+              breakdown={summary.categoryBreakdown}
+              standard={standard}
+              stale={summary.standard !== standard}
+            />
 
             <Pressable onPress={() => router.push('/insights')}>
               <Card>
@@ -209,9 +222,12 @@ export function SittingRow({ readings, standard }: { readings: Reading[]; standa
 function CategoryBreakdown({
   breakdown,
   standard,
+  stale,
 }: {
   breakdown: { category: string; count: number }[];
   standard: 'american' | 'european';
+  /** The counts were made under the other standard and a fresh set is on its way. */
+  stale: boolean;
 }) {
   // The API sends the written label rather than the key, so count them by label.
   const counts = new Map(breakdown.map((entry) => [entry.category, entry.count]));
@@ -232,7 +248,11 @@ function CategoryBreakdown({
               <Body>{BP_CATEGORY_LABEL[category]}</Body>
               <Caption>{ranges[category]}</Caption>
             </View>
-            <Caption style={count === 0 ? { color: colors.textFaint } : undefined}>{count}</Caption>
+            {stale ? (
+              <ActivityIndicator size="small" color={colors.textMuted} />
+            ) : (
+              <Caption style={count === 0 ? { color: colors.textFaint } : undefined}>{count}</Caption>
+            )}
           </View>
         );
       })}

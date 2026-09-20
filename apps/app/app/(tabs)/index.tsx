@@ -106,7 +106,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            <BpChart points={visible} width={chartWidth} />
+            <BpChart points={visible} width={chartWidth} standard={user?.bpStandard ?? 'american'} />
             <Caption style={{ textAlign: 'center' }}>{describeWindow(range)}</Caption>
           </>
         )}
