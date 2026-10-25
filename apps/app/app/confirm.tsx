@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Posture, ScanResult, Tag } from '@mp/shared';
 import {
@@ -32,6 +32,8 @@ export default function ConfirmScreen() {
   const [systolic, setSystolic] = useState('');
   const [diastolic, setDiastolic] = useState('');
   const [pulse, setPulse] = useState('');
+  const diastolicInput = useRef<TextInput | null>(null);
+  const pulseInput = useRef<TextInput | null>(null);
   const [posture, setPosture] = useState<Posture | null>(null);
   const [note, setNote] = useState('');
   const [noteFocused, setNoteFocused] = useState(false);
@@ -193,9 +195,29 @@ export default function ConfirmScreen() {
 
       <View style={{ gap: spacing.xs }}>
         <View style={styles.numbers}>
-          <NumberField label="Systolic" value={systolic} onChange={setSystolic} autoFocus={!scan} />
-          <NumberField label="Diastolic" value={diastolic} onChange={setDiastolic} />
-          <NumberField label="Pulse" value={pulse} onChange={setPulse} />
+          <NumberField
+            label="Systolic"
+            value={systolic}
+            onChange={setSystolic}
+            autoFocus={!scan}
+            maxLength={3}
+            onComplete={() => diastolicInput.current?.focus()}
+          />
+          <NumberField
+            label="Diastolic"
+            value={diastolic}
+            onChange={setDiastolic}
+            inputRef={diastolicInput}
+            maxLength={2}
+            onComplete={() => pulseInput.current?.focus()}
+          />
+          <NumberField
+            label="Pulse"
+            value={pulse}
+            onChange={setPulse}
+            inputRef={pulseInput}
+            maxLength={2}
+          />
         </View>
         {/*
           Said once, under the row, rather than inside the third label - "Pulse
@@ -348,11 +370,17 @@ function NumberField({
   value,
   onChange,
   autoFocus,
+  inputRef,
+  maxLength,
+  onComplete,
 }: {
   label: string;
   value: string;
   onChange: (next: string) => void;
   autoFocus?: boolean;
+  inputRef?: RefObject<TextInput | null>;
+  maxLength: number;
+  onComplete?: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -363,8 +391,14 @@ function NumberField({
       */}
       <Label numberOfLines={1}>{label}</Label>
       <TextInput
+        ref={inputRef}
         value={value}
-        onChangeText={(text) => onChange(text.replace(/[^0-9]/g, '').slice(0, 3))}
+        maxLength={maxLength}
+        onChangeText={(text) => {
+          const digits = text.replace(/[^0-9]/g, '').slice(0, maxLength);
+          onChange(digits);
+          if (digits.length === maxLength) onComplete?.();
+        }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         keyboardType="number-pad"
