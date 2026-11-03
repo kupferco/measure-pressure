@@ -25,7 +25,6 @@ import {
   ErrorNote,
   Heading,
   Label,
-  Loading,
 } from '../../src/components/ui';
 import { api } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth';
@@ -55,6 +54,8 @@ export default function ReportsScreen() {
 
   const load = useCallback(async (id: RangeId) => {
     const request = ++latestRequest.current;
+    setLoading(true);
+    setError(null);
     const from = new Date(Date.now() - rangeDays(id) * 86_400_000).toISOString();
     try {
       const [summaryResult, readingsResult] = await Promise.all([
@@ -69,8 +70,10 @@ export default function ReportsScreen() {
       if (request !== latestRequest.current) return;
       setError(err instanceof Error ? err.message : 'Could not load your reports.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (request === latestRequest.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -79,8 +82,6 @@ export default function ReportsScreen() {
   useEffect(() => {
     load(range);
   }, [load, range, standard]);
-
-  if (loading) return <Loading />;
 
   const sittings = groupIntoSittings(readings);
 
@@ -103,7 +104,12 @@ export default function ReportsScreen() {
         <RangeTabs value={range} onChange={setRange} />
         <Caption>{describeWindow(range)}</Caption>
 
-        {!summary || summary.readingCount === 0 ? (
+        {loading ? (
+          <View style={styles.loading} accessibilityRole="progressbar" accessibilityLabel="Loading reports">
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Caption>Loading reports…</Caption>
+          </View>
+        ) : error ? null : !summary || summary.readingCount === 0 ? (
           <EmptyState title="Nothing in this period" body="Try a longer one, or add a reading." />
         ) : (
           <>
@@ -282,6 +288,7 @@ export function formatWhen(iso: string): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, maxWidth: 720, width: '100%', alignSelf: 'center' },
+  loading: { minHeight: 240, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   categoryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 2 },
   /** Wide enough to read as a colour rather than a dot, and the same shape as the log's bar. */
   swatch: { width: 6, height: 34, borderRadius: 3 },
