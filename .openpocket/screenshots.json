@@ -1,0 +1,17 @@
+{
+  "command": "npm run screenshots",
+  "viewports": [
+    "phone",
+    "desktop"
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "pages": [
+    {
+      "name": "home",
+      "path": "/"
+    }
+  ]
+}
